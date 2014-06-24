@@ -1,0 +1,12 @@
+{
+	"name": "Trakk",
+	"description": "Trakk API",
+	"version": "0.0.1",
+	"private": true,
+	"dependencies": {
+		"express"	: "latest",
+		"mysql"		: "latest",
+		"moment"	: "latest",
+		"geolib"	: "latest"
+	}
+}

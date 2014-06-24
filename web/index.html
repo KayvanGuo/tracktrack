@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <title>TrackTrackBoat</title>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.3.0/css/datepicker.min.css">
+    <link rel="stylesheet" href="//cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="navbar navbar-default navbar-static-top" role="navigation">
+        <div class="container" id="menu"></div>
+    </div>
+    <div class="container" id="map"></div>
+    <div class="container" id="trips"></div>
+    <div class="container" id="fleet"></div>
+
+    <!-- MENU -->
+    <script type="text/template" id="menuTpl">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="#">TrackTrackBoat</a>
+        </div>
+        <div class="collapse navbar-collapse">
+            <ul class="nav navbar-nav">
+                <li class="active"><a href="#">Törns</a></li>
+                <li><a href="#">Flottenmanagement</a></li>
+            </ul>
+        </div>
+    </script>
+
+    <!-- TRIPS -->
+    <script type="text/template" id="tripsTpl">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="page-header">
+                    <h1><small>Boot wählen:</small</h1>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <div class="page-header">
+                    <h1>Törns</h1>
+                </div>
+            </div>
+        </div>
+        <div class="row" style="margin-bottom:50px">
+            <div class="col-md-3">
+                <ul class="nav nav-pills nav-stacked">
+                    <% for(var i in boats) { %>
+                        <% if(i == 0) { %>
+                            <li class="active"><a href="#/trips/<%= boats[i].id %>" class="loadTrip"><%= boats[i].name %></a></li>
+                        <% } else { %>
+                            <li><a href="#"><%= boats[i].name %></a></li>
+                        <% } %>
+                    <% } %>
+                </ul>
+            </div>
+            <div class="col-md-9" id="tripContent"></div>
+        </div>
+    </script>
+
+    <script type="text/template" id="fleetTpl">
+        <div class="row" style="margin-top:50px">
+            <div class="col-md-12">
+                <div class="page-header">
+                    <h1>Flottenmanagement</h1>
+                </div>
+            </div>
+        </div
+        <div class="row">
+            <div class="col-md-12">
+                <table class="table">
+                    <thead>
+                        <th>Name</th>
+                        <th>Hersteller</th>
+                        <th>Modell</th>
+                        <th>Länge ü.A.</th>
+                    </thead>
+                    <% for(var i in boats) { %>
+                        <tr>
+                            <td><%= boats[i].name %></td>
+                            <td><%= boats[i].manufacturer %></td>
+                            <td><%= boats[i].model %></td>
+                            <td><%= boats[i].lengthOverAll %></td>
+                        </tr>
+                    <% } %>
+                </table>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/template" id="tripContentTpl">
+        <table class="table table-responsive table-hover">
+            <thead>
+                <th>Start</th>
+                <th>Ende</th>
+                <th>Auslöser</th>
+                <th>Positionen</th>
+                <th></th>
+            </thead>
+        <% for(var i in trips) { %>
+            <% if(trips[i].amount > 10) { %>
+            <tr>
+                <td><%= moment(trips[i].start).format("DD.MM.YYYY HH:mm:ss") %></td>
+                <td><%= moment(trips[i].finish).format("DD.MM.YYYY HH:mm:ss") %></td>
+                <td><%= trips[i].type %></td>
+                <td><%= trips[i].amount %></td>
+                <td><a href="#" class="showTrip" data-id="<%= trips[i].id %>">Anzeigen</a></td>
+            </tr>
+            <% } %>
+        <% } %>
+        </table>
+    </script>
+
+    <script type="text/template" id="pathPopupTpl">
+        <table class="table">
+            <tr>
+                <th style="border-top:0px!important;">Uhrzeit</th>
+                <td style="border-top:0px!important;"><%= moment(position.timestamp).format("DD.MM.YYYY HH:mm:ss") %></td>
+            </tr>
+            <tr>
+                <th>Latitude</th>
+                <td><%= position.latitude %></td>
+            </tr>
+
+            <tr>
+                <th>Longitude</th>
+                <td><%= position.longitude %></td>
+            </tr>
+            <tr>
+                <th>Geschwindigkeit</th>
+                <td><%= position.speed.toFixed(1) %> ktn</td>
+            </tr>
+            <tr>
+                <th>Kurs</th>
+                <td><%= position.course %>°</td>
+            </tr>
+        </table>
+    </script>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.3.0/js/bootstrap-datepicker.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.3.0/js/locales/bootstrap-datepicker.de.min.js"></script>
+    <script src="//cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.6.0/moment.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

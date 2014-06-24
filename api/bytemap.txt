@@ -1,0 +1,28 @@
+ 0	A
+ 1 	A
+ 2 	A
+ 3	Boot ID (int32)
+ 4
+ 5
+ 6
+ 7	Latitude (float32)
+ 8
+ 9
+10
+11	Longitude (float32)
+12
+13
+14
+15	Speed (float32)
+16
+17
+18
+19	Course (int16)
+20
+21	UTC time - seconds (int8)
+22	UTC time - minutes (int8)
+23	UTC time - hours (int8)
+24	UTC time - day (int8)
+25	UTC time - month (int8)
+26	UTC time - year (int16)
+27
