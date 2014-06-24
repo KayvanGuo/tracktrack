@@ -87,7 +87,6 @@ app.get("/trips/:boat", function(req, res) {
 	    	return res.send(rows);
 	  	});
 	});
-
 });
 
 // GET positions
@@ -287,6 +286,13 @@ net.createServer(function(c) {
 			// loop all keys of boat positions
 			for(var key in boatPositions) {
 
+				// calculates the distance to the last position and 
+				// updates the value in the trip table
+				var calcAndStoreDistance = function(trip, newPosition) {
+					
+					
+				};
+
 				// fn: find a trip out of this position
 				var findTrip = function(rows, c, position, next) {
 
@@ -343,6 +349,21 @@ net.createServer(function(c) {
 									// ... and there is currently a trip going on, ...
 									if(rows[0].currentTrip != null) {
 
+										// find last position of trip
+										c.query("SELECT latitude, longitude FROM positions WHERE trip = " + rows[0].currentTrip + " ORDER BY timestamp", function(err, positions) {
+
+											// store the distance of the trip
+											var dist = 0.0;
+											for(var i = 0; i < positions.length - 1; i++) {
+												dist += geolib.getDistance(positions[i], positions[i + 1]);
+											}
+
+											// meters to nautical miles
+											dist = dist * 0.000539956803;
+
+											c.query("UPDATE trips SET distance = " + dist + " WHERE id = " + rows[0].currentTrip);
+										});
+
 										// ... stop it
 										c.query("UPDATE boats SET currentTrip = NULL WHERE id = " + position.boat);
 										c.query("UPDATE trips SET finish = '" + moment.utc().format("YYYY-MM-DD HH:mm:ss") + "' WHERE id = " + rows[0].currentTrip);
@@ -370,10 +391,10 @@ net.createServer(function(c) {
 						if(err) throw err;
 
 						// find trip and then insert position
-						findTrip(rows, c, position, function(newTripId) {
+						findTrip(rows, c, position, function(trip) {
 
 							// insert new position
-							position["trip"] = newTripId;
+							position["trip"] = trip;
 							c.query("INSERT INTO positions SET ?", position);
 							callback();
 

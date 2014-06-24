@@ -179,11 +179,13 @@ $(function() {
 				});
 
 	           	that.$el.find("#tripContent").html(t);
+
+            	$(".actions > a").tooltip();
 			});
 		},
 
 		show: function(e) {
-			var $e = $(e.target);
+			var $e = $(e.target).parents(".actions");
 			$.getJSON("/positions/" + $e.data("id"), function(positions) {
 				window.mapView.addBoatPath($e.data("id"), positions);
 			});

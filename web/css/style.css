@@ -13,6 +13,10 @@
 	margin-top:5px;
 }
 
-h3 {
-	padding-bottom: 20px;
+.actions a {
+	margin-right:10px;
+}
+
+.actions i {
+	font-size: 1.2em;
 }
