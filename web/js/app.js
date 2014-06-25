@@ -42,11 +42,29 @@ $(function() {
 			};
 
 			this.render();
+
+			var that = this;
+		    var socket = io.connect("http://boattrack.informme.de");
+			socket.emit("join", { owner: this.params.owner });
+
+			// get new position update
+			socket.on("position", function(position) {
+
+				for(var i in that.assets) {
+					if(that.assets[i].options.alt == "boat_" + position.boat) {
+
+						// set boat to new position
+						that.assets[i].setLatLng(L.latLng(position.latitude, position.longitude));
+					}
+				}
+			});
 		},
 
 		render: function() {
 			// create a map in the "map" div, set the view to a given place and zoom
-			this.map = L.map("map").setView([51.505, -0.09], 2);
+			this.map = L.map("map", {
+				measureControl: true
+			}).setView([51.505, -0.09], 2);
 
 			// add an OpenStreetMap tile layer
 			L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
@@ -72,7 +90,7 @@ $(function() {
 
 						case "mooring":
 
-							marker = L.circleMarker(data[i].coord, data[i].radius).addTo(that.map);
+							marker = L.circle(data[i].coord, data[i].radius).addTo(that.map);
 
 							break;
 					}
@@ -236,5 +254,4 @@ $(function() {
 	// start backbone app
     workspace = new AppRouter;
     Backbone.history.start();
-
 });

@@ -19,6 +19,7 @@ var async 	= require("async");
 
 var app 	= express();
 var server 	= http.createServer(app);
+var io 		= require("socket.io")(server);
 
 app.use("/css", express.static("/var/www/boattrack/web/css"));
 app.use("/js", express.static("/var/www/boattrack/web/js"));
@@ -29,11 +30,12 @@ server.listen(8097);
 console.log("Listening on port 8897. Ready to serve...");
 
 var pool  = mysql.createPool({
-	host     : "localhost",
-	user     : "root",
-	password : "InMe1337",
-	database : "boattracker",
-	timezone : "Z"
+	connectionLimit : 100,
+	host     		: "localhost",
+	user     		: "root",
+	password 		: "InMe1337",
+	database 		: "boattracker",
+	timezone 		: "Z"
 });
 
 // HOME
@@ -79,7 +81,7 @@ app.get("/trips/:boat", function(req, res) {
 		if(err) throw err;
 
 		// fetch all boats
-	  	c.query("SELECT t.*, (SELECT COUNT(p.id) FROM positions AS p WHERE p.trip = t.id) AS amount FROM trips AS t WHERE t.boat = " + req.params.boat, function(err, rows) {
+	  	c.query("SELECT t.*, (SELECT COUNT(p.id) FROM positions AS p WHERE p.trip = t.id) AS amount FROM trips AS t WHERE t.boat = " + req.params.boat + " ORDER BY t.start DESC", function(err, rows) {
 
 	  		if(err) throw err;
 	    	c.release();
@@ -126,17 +128,14 @@ app.get("/position/:trip/:latitude/:longitude", function(req, res) {
 // GET /position
 app.get("/assets/:owner", function(req, res) {
 
-	// get connection from pool
-	pool.getConnection(function(err, c) {
+	async.parallel({
 
-		if(err) throw err;
+		// fetch all boats
+		boats: function(callback) {
 
-		async.parallel({
-
-			// fetch all boats
-			boats: function(callback) {
-
-			  	c.query("SELECT p.*, b.name FROM positions AS p JOIN boats as b ON p.boat = b.id WHERE p.id IN (SELECT MAX(pp.id) FROM positions as pp JOIN boats as bb ON pp.boat = bb.id JOIN owners as oo ON oo.id = bb.owner WHERE oo.id = " + req.params.owner + " GROUP BY pp.boat)", function(err, rows) {
+			// get connection from pool
+			pool.getConnection(function(err, c) {
+			  	c.query("SELECT p.* FROM boats AS b JOIN positions AS p ON b.lastPosition = p.id WHERE b.owner = " + req.params.owner, function(err, rows) {
 			  		if(err) throw err;
 
 			  		var boats = [];
@@ -149,13 +148,18 @@ app.get("/assets/:owner", function(req, res) {
 			  			});
 			  		}
 
+					c.release();
+					console.log("boats ready");
 			    	callback(null, boats);
 			  	});
-			},
+			});
+		},
 
-			// fetch all marinas
-			marinas: function(callback) {
+		// fetch all marinas
+		marinas: function(callback) {
 
+			// get connection from pool
+			pool.getConnection(function(err, c) {
 				c.query("SELECT * FROM marinas", function(err, rows) {
 					if(err) throw err;
 
@@ -169,13 +173,18 @@ app.get("/assets/:owner", function(req, res) {
 			  			});
 			  		}
 
+					c.release();
+					console.log("marinas ready");
 			    	callback(null, marinas);
 				});
-			},
+			});
+		},
 
-			// fetch all moorings
-			moorings: function(callback) {
+		// fetch all moorings
+		moorings: function(callback) {
 
+			// get connection from pool
+			pool.getConnection(function(err, c) {
 				c.query("SELECT m.* FROM moorings AS m JOIN boats AS b ON b.id = m.boat WHERE b.owner = " + req.params.owner, function(err, rows) {
 					if(err) throw err;
 
@@ -190,19 +199,32 @@ app.get("/assets/:owner", function(req, res) {
 						})
 					}
 
+					c.release();
+					console.log("moorings ready");
 					callback(null, moorings);
 				});
+			});
+		}
+	}, 
+	function(err, results) {
 
-			}
-		}, 
-		function(err, results) {
+		var assets = results.boats.concat(results.marinas).concat(results.moorings);
+		return res.send(assets);
+	});
+});
 
-			c.release();
+/*
+  _____            _        _     _____ ____  
+ / ____|          | |      | |   |_   _/ __ \ 
+| (___   ___   ___| | _____| |_    | || |  | |
+ \___ \ / _ \ / __| |/ / _ \ __|   | || |  | |
+ ____) | (_) | (__|   <  __/ |_ _ _| || |__| |
+|_____/ \___/ \___|_|\_\___|\__(_)_____\____/ 
+*/
 
-			var assets = results.boats.concat(results.marinas).concat(results.moorings);
-
-			return res.send(assets);
-		});
+io.on("connection", function (socket) {
+	socket.on("join", function (data) {
+		socket.join("owner_" + data.owner);
 	});
 });
 
@@ -286,13 +308,6 @@ net.createServer(function(c) {
 			// loop all keys of boat positions
 			for(var key in boatPositions) {
 
-				// calculates the distance to the last position and 
-				// updates the value in the trip table
-				var calcAndStoreDistance = function(trip, newPosition) {
-					
-					
-				};
-
 				// fn: find a trip out of this position
 				var findTrip = function(rows, c, position, next) {
 
@@ -350,18 +365,21 @@ net.createServer(function(c) {
 									if(rows[0].currentTrip != null) {
 
 										// find last position of trip
-										c.query("SELECT latitude, longitude FROM positions WHERE trip = " + rows[0].currentTrip + " ORDER BY timestamp", function(err, positions) {
+										c.query("SELECT latitude, longitude, speed FROM positions WHERE trip = " + rows[0].currentTrip + " ORDER BY timestamp", function(err, positions) {
 
 											// store the distance of the trip
 											var dist = 0.0;
+											var vmax = 0.0;
 											for(var i = 0; i < positions.length - 1; i++) {
 												dist += geolib.getDistance(positions[i], positions[i + 1]);
+												if(positions[i].speed > vmax) vmax = positions[i].speed;
 											}
 
 											// meters to nautical miles
 											dist = dist * 0.000539956803;
 
 											c.query("UPDATE trips SET distance = " + dist + " WHERE id = " + rows[0].currentTrip);
+											c.query("UPDATE trips SET vmax = " + vmax + " WHERE id = " + rows[0].currentTrip);
 										});
 
 										// ... stop it
@@ -395,7 +413,14 @@ net.createServer(function(c) {
 
 							// insert new position
 							position["trip"] = trip;
-							c.query("INSERT INTO positions SET ?", position);
+							c.query("INSERT INTO positions SET ?", position, function(err, result) {
+
+								// set the pointer to the last known position 
+								c.query("UPDATE boats SET lastPosition = " + result.insertId + " WHERE id = " + position.boat);
+							});
+							
+							// populate to websocket
+							io.sockets.in("owner_" + rows[0].owner).emit("position", position);
 							callback();
 
 						}, function(err) {
