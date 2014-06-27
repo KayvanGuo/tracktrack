@@ -1,4 +1,4 @@
-TrackTrackBoat
+TrackTrack
 ==============
 
 GPS Boottracking Application
