@@ -7,6 +7,9 @@ var net		= require("net");
 var moment 	= require("moment");
 var geolib  = require("geolib");
 var async 	= require("async");
+var http 	= require("http");
+var temp    = require("temp");
+	temp.track();
 
 /*
  _    _ _______ _______ _____     _____ ______ _______      ________ _____  
@@ -225,6 +228,30 @@ app.get("/assets/:owner", function(req, res) {
 
 		var assets = results.boats.concat(results.marinas).concat(results.moorings);
 		return res.send(assets);
+	});
+});
+
+// GET /tileproxy
+app.get("/tileproxy", function(req, res) {
+
+	var blank = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAABFUlEQVR4nO3BMQEAAADCoPVP7WsIoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAMBPAABPO1TCQAAAABJRU5ErkJggg==";
+
+	if(req.query.url.indexOf("tile") == -1) {
+		return res.send(403, null);
+	}
+
+	// fetch the url
+	http.get(req.query.url, function(imgres) {
+
+		//if(imgres.statusCode == 200) {
+			return imgres.pipe(res);
+		//}
+		/*else {
+			res.header("Content-Type", "image/png");
+			res.header("Cache-Control", "max-age=21600");
+			return res.send(new Buffer(blank, "base64"));
+		}*/
+
 	});
 });
 

@@ -8,6 +8,7 @@
 		"mysql"		: "latest",
 		"moment"	: "latest",
 		"geolib"	: "latest",
-		"socket.io"	: "latest"
+		"socket.io"	: "latest",
+		"temp"		: "latest"
 	}
 }

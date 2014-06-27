@@ -76,7 +76,7 @@ $(function() {
 			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
 
 			// add seamark layer
-			L.tileLayer("http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
+			L.tileLayer("https://tracktrack.io/tileproxy?url=http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
 				maxZoom: 17,
 				minZoom: 10
 			}).addTo(this.map);
@@ -232,6 +232,7 @@ $(function() {
 			var $e = $(e.target).parents(".actions");
 			$.getJSON("/positions/" + $e.data("id"), function(positions) {
 				window.mapView.addBoatPath($e.data("id"), positions);
+				document.scrollTo(0,0);
 			});
 		},
 
