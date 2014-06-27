@@ -91,6 +91,24 @@ app.get("/trips/:boat", function(req, res) {
 	});
 });
 
+// GET /trips/delete/
+app.get("/trips/delete/:id", function(req, res) {
+
+	// get connaction from pool
+	pool.getConnection(function(err, c) {
+
+		if(err) throw err;
+
+		// fetch all boats
+	  	c.query("DELETE FROM trips WHERE id = " + req.params.id, function(err, result) {
+
+	  		if(!err && result.affectedRows == 1) return res.send({success: true});
+			else return res.send({success: false});
+	  	});
+	});
+
+});
+
 // GET positions
 app.get("/positions/:trip", function(req, res) {
 
@@ -125,7 +143,7 @@ app.get("/position/:trip/:latitude/:longitude", function(req, res) {
 	});
 });
 
-// GET /position
+// GET /assets/
 app.get("/assets/:owner", function(req, res) {
 
 	async.parallel({
@@ -135,7 +153,7 @@ app.get("/assets/:owner", function(req, res) {
 
 			// get connection from pool
 			pool.getConnection(function(err, c) {
-			  	c.query("SELECT p.* FROM boats AS b JOIN positions AS p ON b.lastPosition = p.id WHERE b.owner = " + req.params.owner, function(err, rows) {
+			  	c.query("SELECT p.*, b.name FROM boats AS b JOIN positions AS p ON b.lastPosition = p.id WHERE b.owner = " + req.params.owner, function(err, rows) {
 			  		if(err) throw err;
 
 			  		var boats = [];
@@ -149,7 +167,6 @@ app.get("/assets/:owner", function(req, res) {
 			  		}
 
 					c.release();
-					console.log("boats ready");
 			    	callback(null, boats);
 			  	});
 			});
@@ -174,7 +191,6 @@ app.get("/assets/:owner", function(req, res) {
 			  		}
 
 					c.release();
-					console.log("marinas ready");
 			    	callback(null, marinas);
 				});
 			});
@@ -200,7 +216,6 @@ app.get("/assets/:owner", function(req, res) {
 					}
 
 					c.release();
-					console.log("moorings ready");
 					callback(null, moorings);
 				});
 			});

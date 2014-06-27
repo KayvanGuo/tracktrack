@@ -4,10 +4,12 @@ $(function() {
 	var MenuView = Backbone.View.extend({
 		el: "#menu",
 
+		// INITIALIZE
 		initialize: function(owner) {
 			this.render();
 		},
 
+		// RENDER
 		render: function() {
 			var t = _.template($("#menuTpl").html());
             this.$el.html(t);
@@ -24,6 +26,7 @@ $(function() {
 		boatpath: null,
 		pathpopup: null,
 
+		// INITIALIZE
 		initialize: function(params) {
 
 			this.params = params;
@@ -32,19 +35,21 @@ $(function() {
 				    iconUrl: "/img/sailing.png",
 				    iconSize: [32, 37], 
 				    iconAnchor:   [16, 37],
+				    labelAnchor: [10, -20]
 				}),
 
 				marina: L.icon({
 				    iconUrl: "/img/harbor.png",
 				    iconSize: [32, 37], 
 				    iconAnchor:   [16, 37],
+				    labelAnchor: [10, -20]
 				})
 			};
 
 			this.render();
 
 			var that = this;
-		    var socket = io.connect("http://boattrack.informme.de");
+		    var socket = io.connect("/");
 			socket.emit("join", { owner: this.params.owner });
 
 			// get new position update
@@ -60,6 +65,7 @@ $(function() {
 			});
 		},
 
+		// RENDER
 		render: function() {
 			// create a map in the "map" div, set the view to a given place and zoom
 			this.map = L.map("map", {
@@ -67,7 +73,18 @@ $(function() {
 			}).setView([51.505, -0.09], 2);
 
 			// add an OpenStreetMap tile layer
-			L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+
+			// add seamark layer
+			L.tileLayer("http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
+				maxZoom: 17,
+				minZoom: 10
+			}).addTo(this.map);
+
+			// add wind vectors
+			/*L.tileLayer("http://www.openportguide.org/tiles/actual/wind_vector/9/{z}/{x}/{y}.png", {
+				maxZoom: 5
+			}).addTo(this.map);*/
 
 			// load assets
 			var that = this;
@@ -84,7 +101,9 @@ $(function() {
 							marker = L.marker(data[i].coord, {
 								icon: that.icons[data[i].type],
 								alt: data[i].type + "_" + data[i].id
-							}).addTo(that.map);
+							})
+							.bindLabel(data[i].name, { noHide: true })
+							.addTo(that.map);
 						
 							break;
 
@@ -104,6 +123,7 @@ $(function() {
 			});
 		},
 
+		// ADD BOAT PATH
 		addBoatPath: function(trip, positions) {
 				
 			var that = this;
@@ -139,6 +159,7 @@ $(function() {
 			});
 		},
 
+		// ADD PATH POPUP
 		addPathPopup: function(position) {
 
 			if(!this.pathpopup) {
@@ -163,9 +184,11 @@ $(function() {
 
 		events: {
 			"click .loadTrip": "load",
-			"click .showTrip": "show"
+			"click .showTrip": "show",
+			"click .deleteTrip": "delete"
 		},
 
+		// INITIALIZE
 		initialize: function(params) {
 
 			var that = this;
@@ -176,6 +199,7 @@ $(function() {
 			});
 		},
 
+		// RENDER
 		render: function() {
 			var t = _.template($("#tripsTpl").html(), {
 				boats: this.boats
@@ -186,6 +210,7 @@ $(function() {
             $(".loadTrip").first().trigger("click");
 		},
 
+		// LOAD
 		load: function(e) {
 
 			var that = this;
@@ -202,23 +227,42 @@ $(function() {
 			});
 		},
 
+		// SHOW
 		show: function(e) {
 			var $e = $(e.target).parents(".actions");
 			$.getJSON("/positions/" + $e.data("id"), function(positions) {
 				window.mapView.addBoatPath($e.data("id"), positions);
 			});
+		},
+
+		// DELETE
+		delete: function(e) {
+			var $e = $(e.target).parents(".actions");
+
+			if(confirm("Wirklich löschen?") == true) {
+				/*$.getJSON("/trips/delete/" + $e.data("id"), function(result) {
+					
+					// deletion went well, remove row
+					if(result.success) {*/
+						$e.parents("tr").remove();
+					//}
+				//});
+			}
 		}
 	})
 
+	// FLEET VIEW
 	var FleetView = Backbone.View.extend({
 		el: "#fleet",
 		boats: null,
 
+		// INITIALIZE
 		initialize: function(params) {
 			this.boats = params.boats;
 			this.render();
 		},
 
+		// RENDER
 		render: function() {
 
 			var t = _.template($("#fleetTpl").html(), {
