@@ -8,8 +8,6 @@ var moment 	= require("moment");
 var geolib  = require("geolib");
 var async 	= require("async");
 var http 	= require("http");
-var temp    = require("temp");
-	temp.track();
 
 /*
  _    _ _______ _______ _____     _____ ______ _______      ________ _____  
@@ -244,6 +242,7 @@ app.get("/tileproxy", function(req, res) {
 	http.get(req.query.url, function(imgres) {
 
 		//if(imgres.statusCode == 200) {
+			res.header("Content-Type", "image/png");
 			return imgres.pipe(res);
 		//}
 		/*else {
@@ -311,6 +310,12 @@ net.createServer(function(c) {
 			if(err) throw err;
 
 			var boatPositions = {};
+
+			// store the raw data, for error logging purposes
+			c.query("INSERT INTO rawdata SET ?", {
+				"timestamp": moment.utc().toDate(),
+				"data": buf
+			});
 
 			// check for the first occurance of "AAA"
 			for(var i = 0; i < buf.length; i++) {

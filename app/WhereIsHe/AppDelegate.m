@@ -39,7 +39,10 @@
     {
         // flush url cache
         if (self.reachable == NO) {
+            
+            [self.timer invalidate];
             [self flushDataCache: nil];
+            [self setTimer];
         }
         
         self.reachable = YES;
@@ -287,7 +290,7 @@
         // If there was an error, it's likely something like "already connected" or "no delegate set"
         NSLog(@"I goofed: %@", err);
     }
-    
+     
     for(int i = 0; i < [urlCache count]; i++)
     {
         [socket writeData:(NSData *)[urlCache objectAtIndex:i] withTimeout:-1 tag:8100];
