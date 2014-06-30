@@ -241,13 +241,13 @@ $(function() {
 			var $e = $(e.target).parents(".actions");
 
 			if(confirm("Wirklich löschen?") == true) {
-				/*$.getJSON("/trips/delete/" + $e.data("id"), function(result) {
+				$.getJSON("/trips/delete/" + $e.data("id"), function(result) {
 					
 					// deletion went well, remove row
 					if(result.success) {*/
 						$e.parents("tr").remove();
-					//}
-				//});
+					}
+				});
 			}
 		}
 	})
