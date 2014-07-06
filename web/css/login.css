@@ -1,0 +1,29 @@
+html, body {
+	height:100%;
+	width:100%;
+	overflow:hidden;
+}
+
+#map {
+	position:absolute;
+	z-index:-1000;
+	height:100%;
+	width:100%;
+	top:0px;
+	left:0px;
+
+	-webkit-filter: blur(2px);
+	-moz-filter: blur(2px);
+	filter: blur(2px);
+}
+
+#loginPanel {
+	-webkit-box-shadow: 0 0 50px 0 #888;
+	box-shadow: 0 0 50px 0 #888;
+	border: 1px solid #ccc;
+	display:none;
+}
+
+#loginPanel .panel-body {
+	padding:50px;
+}

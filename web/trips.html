@@ -10,14 +10,14 @@
     <link rel="stylesheet" href="//leaflet.github.io/Leaflet.label/leaflet.label.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css">
     <link rel="stylesheet" href="//jtreml.github.io/leaflet.measure/leaflet.measure/leaflet.measure.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="/css/trips.css">
 </head>
 <body>
 
-    <div class="navbar navbar-default navbar-static-top" role="navigation">
+    <div class="navbar navbar-default navbar-fixed-top" role="navigation">
         <div class="container" id="menu"></div>
     </div>
-    <div class="container" id="map"></div>
+    <div class="container" id="map" style="margin-top:50px"></div>
     <div class="container" id="trips"></div>
     <div class="container" id="fleet"></div>
 
@@ -30,12 +30,13 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href="#">TrackTrack <i class="fa fa-anchor"></i> Boat</a>
+            <a class="navbar-brand" href="#">TrackTrack <i class="fa fa-anchor"></i> Törns</a>
         </div>
         <div class="collapse navbar-collapse">
             <ul class="nav navbar-nav">
-                <li class="active"><a href="#">Törns</a></li>
-                <li><a href="#">Flottenmanagement</a></li>
+                <li class="active"><a href="/trips"><i class="fa fa-compass"></i> Törns</a></li>
+                <li><a href="/fleet"><i class="fa fa-life-ring"></i> Flottenmanagement</a></li>
+                <li><a href="javascript:void();" class="logout"><i class="fa fa-power-off"></i> Ausloggen</a></li>
             </ul>
         </div>
     </script>
@@ -50,7 +51,7 @@
             </div>
             <div class="col-md-9">
                 <div class="page-header">
-                    <h1>Törns</h1>
+                    <h1><i class="fa fa-compass"></i> Törns</h1>
                 </div>
             </div>
         </div>
@@ -101,6 +102,75 @@
     </script>
 
     <script type="text/template" id="tripContentTpl">
+        <div class="modal fade" id="modalEmbed">
+            <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Schließen</span></button>
+                    <h4 class="modal-title"><i class="fa fa-code"></i> Törn auf Webseite einbinden</h4>
+                </div>
+                <div class="modal-body">
+
+                    <div class="row">
+                        <div class="col-md-12">
+
+                            <div class="form-group">
+                                <label>Code:</label>
+                                <textarea id="embedCode" class="form-control"></textarea>
+                            </div>
+       
+                            <div class="form-group">
+                                <label for="embedPreview">Vorschau:</label>
+                                <iframe src="https://tracktrack.io/embed/bJNpOwZd/?follow=1" frameborder="0" width="100%" height="250" id="embedPreview"></iframe>
+                            </div>
+
+                            <div class="well form-group" style="margin-bottom:0px!important;">
+
+                                <input type="hidden" id="embedKey" value="">
+
+                                <!-- size -->
+                                <div class="form-inline">
+                                    <div class="form-group options-group">
+                                        <label class="options-label">Größe:</label>
+                                        <input type="number" class="form-control embedPreviewChange" id="embedWidth" placeholder="Breite" value="500" min="1" max="9999">
+                                        &nbsp;&times;&nbsp;
+                                        <input type="number" class="form-control embedPreviewChange" id="embedHeight" placeholder="Höhe" value="300" min="1" max="9999">
+                                        &nbsp;px
+                                    </div> 
+
+                                    <div class="form-group options-group followVals">
+                                        <label class="options-label">Zoom:</label>
+                                        <div class="radio">
+                                          <label>
+                                            <input type="radio" class="embedPreviewChange" name="follow" value="1" checked> &nbsp;Dem Boot folgen
+                                          </label>
+                                        </div>
+                                        <div class="radio" style="padding-left:10px">
+                                          <label>
+                                            <input type="radio" class="embedPreviewChange" name="follow" value="0"> &nbsp;Tourübersicht anzeigen
+                                          </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group options-group assetsVal">
+                                        <label class="options-label">Anzeige:</label>
+
+                                        <div class="checkbox">
+                                            <label>
+                                                <input type="checkbox" class="embedPreviewChange" id="assets" value="1">  &nbsp;Hafenanlagen anzeigen
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+
         <table class="table table-responsive table-hover">
             <thead>
                 <th></th>
@@ -116,7 +186,7 @@
             <% if(trips[i].amount > 10) { %>
             <tr>
                 <td class="actions" data-id="<%= trips[i].id %>">
-                    <a href="javascript:void(0);" class="text-danger deleteTrip" data-toggle="tooltip" data-placement="top" title="Trip löschen"><i class="fa fa-trash-o"></i></a>
+                    <a href="javascript:void(0);" class="text-danger deleteTrip" data-toggle="tooltip" data-placement="top" title="Törn löschen"><i class="fa fa-trash-o"></i></a>
                 </td>
                 <td><%= moment(trips[i].start).format("DD.MM.YYYY HH:mm:ss") %></td>
                 <td>
@@ -144,7 +214,7 @@
                         manuell
                     <% } %>
                 </td>
-                <td class="actions" data-id="<%= trips[i].id %>">
+                <td class="actions" data-id="<%= trips[i].id %>" data-key="<%= trips[i].key %>" >
                     <a href="javascript:void(0);" class="showTrip" data-toggle="tooltip" data-placement="top" title="auf Karte anzeigen">anzeigen</a>
                     <a href="javascript:void(0);" class="shareTrip" data-toggle="tooltip" data-placement="top" title="teilen"><i class="fa fa-send"></i></a>
                     <a href="javascript:void(0);" class="embedTrip" data-toggle="tooltip" data-placement="top" title="auf Website einbinden"><i class="fa fa-code"></i></a>
@@ -187,7 +257,6 @@
 
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/openlayers/2.13.1/OpenLayers.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
     <script src="//jtreml.github.io/leaflet.measure/leaflet.measure/leaflet.measure.js"></script>
     <script src="//leaflet.github.io/Leaflet.label/leaflet.label.js"></script>
@@ -195,6 +264,7 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.6.0/moment.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/app.js"></script>
+    <script src="/js/base.js"></script>
+    <script src="/js/trips.js"></script>
 </body>
 </html>

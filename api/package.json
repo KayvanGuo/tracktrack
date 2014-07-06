@@ -1,14 +1,16 @@
 {
-	"name": "Trakk",
-	"description": "Trakk API",
+	"name": "TrackTrack",
+	"description": "TrackTrack API",
 	"version": "0.0.1",
 	"private": true,
 	"dependencies": {
-		"express"	: "latest",
-		"mysql"		: "latest",
-		"moment"	: "latest",
-		"geolib"	: "latest",
-		"socket.io"	: "latest",
-		"temp"		: "latest"
+		"express"		: "latest",
+		"mysql"			: "latest",
+		"moment"		: "latest",
+		"geolib"		: "latest",
+		"socket.io"		: "latest",
+		"shortid"		: "latest",
+		"passport"		: "latest",
+		"passport-http"	: "latest"
 	}
 }

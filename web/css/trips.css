@@ -20,3 +20,13 @@
 .actions i {
 	font-size: 1.2em;
 }
+
+.options-label {
+	width:80px;
+	color:grey;
+	font-weight: bold;
+}
+
+.options-group {
+	padding-bottom: 15px;
+}

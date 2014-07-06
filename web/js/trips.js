@@ -4,6 +4,10 @@ $(function() {
 	var MenuView = Backbone.View.extend({
 		el: "#menu",
 
+		events: {
+			"click .logout": "logout"
+		},
+
 		// INITIALIZE
 		initialize: function(owner) {
 			this.render();
@@ -13,38 +17,25 @@ $(function() {
 		render: function() {
 			var t = _.template($("#menuTpl").html());
             this.$el.html(t);
+		},
+
+		// LOGOUT
+		logout: function() {
+			localStorage.removeItem("e");
+			localStorage.removeItem("p");
+			location.href = "/";
 		}
 	});
 
 	// MAP VIEW
-	var MapView = Backbone.View.extend({
+	var IndexMapView = MapView.extend({
 		el: "#map",
-		map: null,
-		icons: {},
-		assets: [],
 		params: null,
-		boatpath: null,
-		pathpopup: null,
 
 		// INITIALIZE
 		initialize: function(params) {
 
 			this.params = params;
-			this.icons = {
-				boat: L.icon({
-				    iconUrl: "/img/sailing.png",
-				    iconSize: [32, 37], 
-				    iconAnchor:   [16, 37],
-				    labelAnchor: [10, -20]
-				}),
-
-				marina: L.icon({
-				    iconUrl: "/img/harbor.png",
-				    iconSize: [32, 37], 
-				    iconAnchor:   [16, 37],
-				    labelAnchor: [10, -20]
-				})
-			};
 
 			this.render();
 
@@ -58,8 +49,15 @@ $(function() {
 				for(var i in that.assets) {
 					if(that.assets[i].options.alt == "boat_" + position.boat) {
 
+						var l = L.latLng(position.latitude, position.longitude);
+
 						// set boat to new position
-						that.assets[i].setLatLng(L.latLng(position.latitude, position.longitude));
+						that.assets[i].setLatLng(l);
+
+						// if there is a boatpath available, add to this
+						if(that.boatpath && position.trip == that.currentTrip) {
+							that.boatpath.addLatLng(l);
+						}
 					}
 				}
 			});
@@ -68,9 +66,9 @@ $(function() {
 		// RENDER
 		render: function() {
 			// create a map in the "map" div, set the view to a given place and zoom
-			this.map = L.map("map", {
-				measureControl: true
-			}).setView([51.505, -0.09], 2);
+			this.map = L.map("map");
+
+			$(".leaflet-control-attribution").hide();
 
 			// add an OpenStreetMap tile layer
 			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
@@ -80,11 +78,6 @@ $(function() {
 				maxZoom: 17,
 				minZoom: 10
 			}).addTo(this.map);
-
-			// add wind vectors
-			/*L.tileLayer("http://www.openportguide.org/tiles/actual/wind_vector/9/{z}/{x}/{y}.png", {
-				maxZoom: 5
-			}).addTo(this.map);*/
 
 			// load assets
 			var that = this;
@@ -119,61 +112,10 @@ $(function() {
 					that.assets.push(marker);
 				}
 
-				that.map.fitBounds(bounds);
-			});
-		},
-
-		// ADD BOAT PATH
-		addBoatPath: function(trip, positions) {
-				
-			var that = this;
-
-			// delete old path
-			if(this.boatpath) {
-				this.map.removeLayer(this.boatpath);
-				this.boatpath = null;
-			}
-
-			var coords = [];
-			for(var i in positions) {
-				coords.push(L.latLng(positions[i].latitude, positions[i].longitude));
-			}
-
-			// create polyline
-			this.boatpath = L.polyline(coords, {
-				color: "red"
-			});
-
-			// a click on the path
-			this.boatpath.on("click", function(e) {
-				$.getJSON("/position/" + trip + "/" + e.latlng.lat + "/" + e.latlng.lng, function(data) {
-					that.addPathPopup(data);
+				that.map.fitBounds(bounds, {
+					padding: new L.point(5, 5)
 				});
 			});
-
-			this.boatpath.addTo(this.map);
-
-			// center map arond trip
-			this.map.fitBounds(L.latLngBounds(coords), {
-				padding: new L.point(5, 5)
-			});
-		},
-
-		// ADD PATH POPUP
-		addPathPopup: function(position) {
-
-			if(!this.pathpopup) {
-				this.pathpopup = L.popup();
-			}
-
-			var tpl = _.template($("#pathPopupTpl").html(), {
-				"position": position
-			});
-
-			this.pathpopup
-				.setLatLng(L.latLng(position.latitude, position.longitude))
-			    .setContent(tpl)
-			    .openOn(this.map);
 		}
 	});
 
@@ -183,9 +125,12 @@ $(function() {
 		boats: [],
 
 		events: {
-			"click .loadTrip": "load",
-			"click .showTrip": "show",
-			"click .deleteTrip": "delete"
+			"click .loadTrip"			: "load",
+			"click .showTrip"			: "show",
+			"click .deleteTrip"			: "delete",
+			"click .embedTrip"			: "embed",
+			"change .embedPreviewChange": "updatePreview",
+			"focus #embedCode"			: "codeSelect"
 		},
 
 		// INITIALIZE
@@ -230,10 +175,20 @@ $(function() {
 		// SHOW
 		show: function(e) {
 			var $e = $(e.target).parents(".actions");
-			$.getJSON("/positions/" + $e.data("id"), function(positions) {
-				window.mapView.addBoatPath($e.data("id"), positions);
-				document.scrollTo(0,0);
-			});
+
+			console.log(window.mapView.currentTrip);
+			if(window.mapView.currentTrip == $e.data("id")) {
+				window.mapView.removeBoatPath();
+				$(e.target).text("anzeigen");
+			}
+			else {
+				$.getJSON("/positions/" + $e.data("id"), function(positions) {
+					window.mapView.addBoatPath($e.data("id"), positions);
+					$("html, body").animate({ scrollTop: 0}, "fast");
+					$(".showTrip").text("anzeigen");
+					$(e.target).text("ausblenden");			
+				});
+			}
 		},
 
 		// DELETE
@@ -244,11 +199,51 @@ $(function() {
 				$.getJSON("/trips/delete/" + $e.data("id"), function(result) {
 					
 					// deletion went well, remove row
-					if(result.success) {*/
+					if(result.success) {
 						$e.parents("tr").remove();
 					}
 				});
 			}
+		},
+
+		// EMBED
+		embed: function(e) {
+			var $e = $(e.target).parents(".actions");
+
+			var key = $e.data("key");
+			var id = $e.data("id");
+			
+			// launch modal view
+			$("#modalEmbed").modal("show");
+			$("#embedKey").val(key);
+			this.updatePreview();
+
+			/*$(document).on("change", "", function() {
+			 	console.log("updatePreview");
+			});*/
+		},
+
+		// UPDATE PREVIEW
+		updatePreview: function() {
+			var key = $("#embedKey").val();
+			var url = "https://tracktrack.io/embed/" + key + "/?f=";
+
+			url += $(".followVals input[type='radio']:checked").val();	// follow
+			url += "&a=";
+			url += ($("#assets").prop("checked")) ? "1" : "0";	// assets
+
+			var iframe = "<iframe src=\"" + url + "\" width=\"" + $("#embedWidth").val() + "\" height=\"" + $("#embedHeight").val() + "\" frameborder=\"0\"></iframe>";
+
+			$("#embedPreview").prop("src", url);
+			$("#embedCode").val(iframe);
+		},
+
+		// CODE SELECT
+		codeSelect: function(event) {
+			event.preventDefault();
+  			setTimeout(function() { 
+  				$(event.target).select(); 
+  			}, 1); 
 		}
 	})
 
@@ -286,7 +281,7 @@ $(function() {
         	var owner = 2;
 
         	window.menuView = new MenuView();
-        	window.mapView = new MapView({
+        	window.mapView = new IndexMapView({
         		"owner": owner
         	});
 
@@ -296,7 +291,22 @@ $(function() {
         }
     });
 
-	// start backbone app
-    workspace = new AppRouter;
-    Backbone.history.start();
+    var e = localStorage.getItem("e");
+    var p = localStorage.getItem("p");
+
+    if(!e || !p) {
+    	location.href="/";
+    }
+    else {
+    	$.ajaxSetup({
+			headers: {
+				"Authorization": "Basic " + btoa(e + ":" + p)
+			}
+		});
+
+		// start backbone app
+	    workspace = new AppRouter;
+	    Backbone.history.start();
+    }
+
 });

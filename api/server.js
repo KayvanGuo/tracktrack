@@ -1,13 +1,17 @@
-var http	= require("http");
-var express = require("express");
-var mysql 	= require("mysql");	
-var fs		= require("fs");
-var zlib	= require("zlib");
-var net		= require("net");
-var moment 	= require("moment");
-var geolib  = require("geolib");
-var async 	= require("async");
-var http 	= require("http");
+var http			= require("http");
+var express 		= require("express");
+var mysql 			= require("mysql");	
+var fs				= require("fs");
+var zlib			= require("zlib");
+var net				= require("net");
+var moment 			= require("moment");
+var geolib  		= require("geolib");
+var async 			= require("async");
+var shortid 		= require("shortid");
+var passport 		= require("passport");
+var BasicStrategy 	= require("passport-http").BasicStrategy;
+var bcrypt  		= require("bcrypt");
+var bodyParser 		= require("body-parser");
 
 /*
  _    _ _______ _______ _____     _____ ______ _______      ________ _____  
@@ -18,18 +22,7 @@ var http 	= require("http");
 |_|  |_|  |_|     |_|  |_|      |_____/|______|_|  \_\  \/   |______|_|  \_\
 */
 
-var app 	= express();
-var server 	= http.createServer(app);
-var io 		= require("socket.io")(server);
-
-app.use("/css", express.static("/var/www/boattrack/web/css"));
-app.use("/js", express.static("/var/www/boattrack/web/js"));
-app.use("/img", express.static("/var/www/boattrack/web/img"));
-
-// start server
-server.listen(8097);
-console.log("Listening on port 8897. Ready to serve...");
-
+// MySQL connection pool
 var pool  = mysql.createPool({
 	connectionLimit : 100,
 	host     		: "localhost",
@@ -39,23 +32,119 @@ var pool  = mysql.createPool({
 	timezone 		: "Z"
 });
 
-// HOME
-app.get("/", function(req, res) {
+//LOGIN
+var loginFn = function(username, password, done) {
 
+	pool.getConnection(function(err, c) {
+
+		if(err) return done(err);
+
+		// find user by username
+		c.query("SELECT * FROM users WHERE email = " + pool.escape(username), function(err, rows) {
+
+			if (err)  return done(err);
+	      	if (rows.length == 0) return done(null, false);
+	      	if (rows[0].password != password) return done(null, false);
+	      	return done(null, rows[0]);
+
+		});
+	});
+};
+
+passport.use(new BasicStrategy(loginFn));
+
+var app 	= express();
+var server 	= http.createServer(app);
+var io 		= require("socket.io")(server);
+
+app.use("/css", express.static("/var/www/boattrack/web/css"));
+app.use("/js", express.static("/var/www/boattrack/web/js"));
+app.use("/img", express.static("/var/www/boattrack/web/img"));
+app.use(passport.initialize());
+app.use(bodyParser.json()); 
+app.use(bodyParser.urlencoded());
+
+// start server
+server.listen(8097);
+console.log("Listening on port 8897. Ready to serve...");
+
+// Serve a static html file with gzip compression
+function serveHtml(res, file, next) {
 	// read index.html
-  	fs.readFile("/var/www/boattrack/web/index.html", function (err, html) {
+  	fs.readFile("/var/www/boattrack/web/" + file, function (err, html) {
 		zlib.gzip(html, function(err, result) {
 			
 			res.set("Content-Type", "text/html");
 			res.set("Content-Encoding", "gzip");
 			
-			return res.send(result);
+			return next(result);
 		});
 	}); 
+}
+
+// HOME
+app.get("/", function(req, res) {
+
+	serveHtml(res, "login.html", function(html) {
+		return res.send(html);
+	});
+});
+
+// TRIPS
+app.get("/trips", function(req, res) {
+
+	serveHtml(res, "trips.html", function(html) {
+		return res.send(html);
+	});
+});
+
+// SIGNUP
+app.get("/signup/:username/:password", function(req, res) {
+	pool.getConnection(function(err, c) {
+
+	    if(err) return done(err);
+
+	    bcrypt.hash(req.params.password, 10, function(err, hash) {
+		    
+		    // Store hash in your password DB.
+		    c.query("INSERT INTO users SET ?", {
+		    	"owner": 2,
+		    	"username": req.params.username,
+		    	"password": hash
+		    });
+
+		    return res.send("I <3 you.");
+		});
+
+	});
+});
+
+// LOGIN
+app.post("/login", function(req, res) {
+
+	console.log(req.body);
+
+	//do the login
+	loginFn(req.body.email, req.body.password, function(err, user) {
+
+		console.log(err, user);
+
+		if(!err && user) res.redirect("/trips");
+		else res.redirect("/");
+
+	});
+});
+
+// EMBED
+app.get("/embed/:key/", function(req, res) {
+
+	serveHtml(res, "embed.html", function(html) {
+		return res.send(html);
+	});
 });
 
 // GET /BOATS
-app.get("/boats/:owner", function(req, res) {
+app.get("/boats/:owner", passport.authenticate("basic", { session: false }), function(req, res) {
 
 	// get connaction from pool
 	pool.getConnection(function(err, c) {
@@ -63,7 +152,7 @@ app.get("/boats/:owner", function(req, res) {
 		if(err) throw err;
 
 		// fetch all boats
-	  	c.query("SELECT * FROM boats WHERE owner = " + req.params.owner, function(err, rows) {
+	  	c.query("SELECT * FROM boats WHERE owner = " + pool.escape(req.params.owner), function(err, rows) {
 
 	  		if(err) throw err;
 	    	c.release();
@@ -74,7 +163,7 @@ app.get("/boats/:owner", function(req, res) {
 });
 
 // GET /trips
-app.get("/trips/:boat", function(req, res) {
+app.get("/trips/:boat", passport.authenticate("basic", { session: false }), function(req, res) {
 
 	// get connaction from pool
 	pool.getConnection(function(err, c) {
@@ -82,7 +171,7 @@ app.get("/trips/:boat", function(req, res) {
 		if(err) throw err;
 
 		// fetch all boats
-	  	c.query("SELECT t.*, (SELECT COUNT(p.id) FROM positions AS p WHERE p.trip = t.id) AS amount FROM trips AS t WHERE t.boat = " + req.params.boat + " ORDER BY t.start DESC", function(err, rows) {
+	  	c.query("SELECT t.*, (SELECT COUNT(p.id) FROM positions AS p WHERE p.trip = t.id) AS amount FROM trips AS t WHERE t.boat = " + pool.escape(req.params.boat) + " ORDER BY t.start DESC", function(err, rows) {
 
 	  		if(err) throw err;
 	    	c.release();
@@ -92,8 +181,8 @@ app.get("/trips/:boat", function(req, res) {
 	});
 });
 
-// GET /trips/delete/
-app.get("/trips/delete/:id", function(req, res) {
+// GET /trip/:key
+app.get("/trip/:key", function(req, res) {
 
 	// get connaction from pool
 	pool.getConnection(function(err, c) {
@@ -101,7 +190,26 @@ app.get("/trips/delete/:id", function(req, res) {
 		if(err) throw err;
 
 		// fetch all boats
-	  	c.query("DELETE FROM trips WHERE id = " + req.params.id, function(err, result) {
+	  	c.query("SELECT t.*, b.name, b.owner FROM trips AS t JOIN boats AS b ON t.boat = b.id WHERE t.key = " + pool.escape(req.params.key), function(err, rows) {
+
+	  		if(err) throw err;
+	    	c.release();
+
+	    	return res.send(rows[0]);
+	  	});
+	});
+});
+
+// GET /trips/delete/
+app.get("/trips/delete/:id", passport.authenticate("basic", { session: false }),  function(req, res) {
+
+	// get connaction from pool
+	pool.getConnection(function(err, c) {
+
+		if(err) throw err;
+
+		// fetch all boats
+	  	c.query("DELETE FROM trips WHERE id = " + pool.escape(req.params.id), function(err, result) {
 
 	  		if(!err && result.affectedRows == 1) return res.send({success: true});
 			else return res.send({success: false});
@@ -118,7 +226,7 @@ app.get("/positions/:trip", function(req, res) {
 
 		if(err) throw err;
 
-		c.query("SELECT latitude, longitude, speed, course, timestamp, anchored FROM positions WHERE trip = " + req.params.trip + " ORDER BY timestamp", function(err, rows) {
+		c.query("SELECT latitude, longitude, speed, course, timestamp, anchored FROM positions WHERE trip = " + pool.escape(req.params.trip) + " ORDER BY timestamp", function(err, rows) {
 			if(err) throw err;
 	    	c.release();
 
@@ -134,7 +242,7 @@ app.get("/position/:trip/:latitude/:longitude", function(req, res) {
 
 		if(err) throw err;
 
-		c.query("SELECT p.*, (POW(69.1 * (latitude - " + req.params.latitude +"), 2) + POW(69.1 * (" + req.params.longitude + " - longitude) * COS(latitude / 57.3), 2)) AS distance FROM positions AS p WHERE p.trip = " + req.params.trip + " ORDER BY distance LIMIT 1", function(err, rows) {
+		c.query("SELECT p.*, (POW(69.1 * (latitude - " + pool.escape(req.params.latitude) +"), 2) + POW(69.1 * (" + pool.escape(req.params.longitude) + " - longitude) * COS(latitude / 57.3), 2)) AS distance FROM positions AS p WHERE p.trip = " + pool.escape(req.params.trip) + " ORDER BY distance LIMIT 1", function(err, rows) {
 
 			if(err) throw err;
 	    	c.release();
@@ -154,7 +262,7 @@ app.get("/assets/:owner", function(req, res) {
 
 			// get connection from pool
 			pool.getConnection(function(err, c) {
-			  	c.query("SELECT p.*, b.name FROM boats AS b JOIN positions AS p ON b.lastPosition = p.id WHERE b.owner = " + req.params.owner, function(err, rows) {
+			  	c.query("SELECT p.*, b.name FROM boats AS b JOIN positions AS p ON b.lastPosition = p.id WHERE b.owner = " + pool.escape(req.params.owner), function(err, rows) {
 			  		if(err) throw err;
 
 			  		var boats = [];
@@ -202,7 +310,7 @@ app.get("/assets/:owner", function(req, res) {
 
 			// get connection from pool
 			pool.getConnection(function(err, c) {
-				c.query("SELECT m.* FROM moorings AS m JOIN boats AS b ON b.id = m.boat WHERE b.owner = " + req.params.owner, function(err, rows) {
+				c.query("SELECT m.* FROM moorings AS m JOIN boats AS b ON b.id = m.boat WHERE b.owner = " + pool.escape(req.params.owner), function(err, rows) {
 					if(err) throw err;
 
 					var moorings = [];
@@ -265,7 +373,14 @@ app.get("/tileproxy", function(req, res) {
 
 io.on("connection", function (socket) {
 	socket.on("join", function (data) {
-		socket.join("owner_" + data.owner);
+
+		if(data.owner) {
+			socket.join("owner_" + data.owner);
+		}
+
+		if(data.trip) {
+			socket.join("trip_" + data.trip);
+		}
 	});
 });
 
@@ -384,6 +499,7 @@ net.createServer(function(c) {
 									if(rows[0].currentTrip == null) {
 
 										var newTrip = {
+											"key": shortid.generate(),
 											"boat": position.boat,
 											"type": 1,
 											"start": moment.utc().format("YYYY-MM-DD HH:mm:ss"),
@@ -468,6 +584,8 @@ net.createServer(function(c) {
 							
 							// populate to websocket
 							io.sockets.in("owner_" + rows[0].owner).emit("position", position);
+							if(trip) io.sockets.in("trip_" + trip).emit("position", position);
+
 							callback();
 
 						}, function(err) {
