@@ -12,19 +12,16 @@
 
 @implementation AppDelegate
 
-@synthesize lastUpdate, reachable, locationManager, socket, packetSize, timer;
+@synthesize lastUpdate, reachable, locationManager;
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     [UIApplication sharedApplication].idleTimerDisabled = YES;
     
-    self.packetSize = 28;
-    self.socket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
-    
     // Override point for customization after application launch.
     locationManager = [[CLLocationManager alloc] init];
     locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
-    locationManager.distanceFilter = 5;
+    locationManager.distanceFilter = 1;
     locationManager.delegate = self;
     locationManager.pausesLocationUpdatesAutomatically = YES;
     locationManager.activityType = CLActivityTypeFitness;
@@ -40,9 +37,7 @@
         // flush url cache
         if (self.reachable == NO) {
             
-            [self.timer invalidate];
             [self flushDataCache: nil];
-            [self setTimer];
         }
         
         self.reachable = YES;
@@ -56,17 +51,7 @@
     // Start the notifier, which will cause the reachability object to retain itself!
     [reach startNotifier];
     
-    [self setTimer];
-    
     return YES;
-}
-
-- (void)setTimer {
-    self.timer = [NSTimer scheduledTimerWithTimeInterval: 30
-                                                  target: self
-                                                selector:@selector(flushDataCache:)
-                                                userInfo: nil
-                                                 repeats: YES];
 }
 
 - (void)applicationDidEnterBackground:(UIApplication *)application
@@ -182,93 +167,34 @@
  
     if ([prefs boolForKey:@"service.state"] == YES || [prefs objectForKey:@"service.state"] == nil) {
         
-        u_int8_t msgId = 65;
-        NSData *msgIdData = [NSData dataWithBytes:&msgId length:sizeof(u_int8_t)];
+        NSArray *urlCache = [prefs arrayForKey:@"data.cache"];
         
-        // id
-        int boat_id = 3;
-        NSData *boatIdData = [NSData dataWithBytes:&boat_id length:sizeof(int)];
-        
-        // latitude
-        float lat = (float)loc.coordinate.latitude;
-        NSData *latitudeData = [NSData dataWithBytes:&lat length:sizeof(float)];
-        
-        // longitude
-        float lon = (float)loc.coordinate.longitude;
-        NSData *longitudeData = [NSData dataWithBytes:&lon length:sizeof(float)];
-        
-        // speed
+        NSDateFormatter *dateFormat = [[NSDateFormatter alloc] init];
+        [dateFormat setTimeZone:[NSTimeZone timeZoneWithName:@"UTC"]];
+        [dateFormat setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
         
         float spd = 0;
         if (loc.speed > 0) {
             spd = (float)(loc.speed * 1.94384449);
         }
-        NSData *speedData = [NSData dataWithBytes:&spd length:sizeof(float)];
         
-        // course
-        uint16_t crs = (uint16_t)loc.course;
-        NSData *courseData = [NSData dataWithBytes:&crs length:sizeof(uint16_t)];
-        
-        NSCalendar *calendar = [NSCalendar currentCalendar];
-        [calendar setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
-        NSDateComponents *components = [calendar components:(NSHourCalendarUnit | NSMinuteCalendarUnit | NSSecondCalendarUnit | NSMonthCalendarUnit | NSYearCalendarUnit | NSDayCalendarUnit) fromDate:loc.timestamp];
-        
-        // seconds
-        uint8_t sec = (uint8_t)[components second];
-        NSData *seconds = [NSData dataWithBytes:&sec length:sizeof(uint8_t)];
-        
-        // minutes
-        uint8_t min = (uint8_t)[components minute];
-        NSData *minutes = [NSData dataWithBytes:&min length:sizeof(uint8_t)];
-        
-        // hours
-        uint8_t hrs = (uint8_t)[components hour];
-        NSData *hours = [NSData dataWithBytes:&hrs length:sizeof(uint8_t)];
-        
-        // days
-        uint8_t dys = (uint8_t)[components day];
-        NSData *days = [NSData dataWithBytes:&dys length:sizeof(uint8_t)];
-        
-        // months
-        uint8_t mnth = (uint8_t)[components month];
-        NSData *months = [NSData dataWithBytes:&mnth length:sizeof(uint8_t)];
-        
-        // years
-        uint16_t yrs = (uint16_t)[components year];
-        NSData *years = [NSData dataWithBytes:&yrs length:sizeof(uint16_t)];
-        
-        // create data array
-        NSMutableData *data = [[NSMutableData alloc] init];
-        [data appendData:msgIdData];
-        [data appendData:msgIdData];
-        [data appendData:msgIdData];
-        [data appendData:boatIdData];
-        [data appendData:latitudeData];
-        [data appendData:longitudeData];
-        [data appendData:speedData];
-        [data appendData:courseData];
-        [data appendData:seconds];
-        [data appendData:minutes];
-        [data appendData:hours];
-        [data appendData:days];
-        [data appendData:months];
-        [data appendData:years];
-        
-        NSArray *urlCache = [prefs arrayForKey:@"data.cache"];
+        if(loc.horizontalAccuracy < 0) return;
         
         // add
+        NSString *sendURL = [NSString stringWithFormat:@"http://tracktrack.io/reception?boat=3&lat=%f&lon=%f&speed=%f&course=%i&hdop=%i&timestamp=%@",
+                             loc.coordinate.latitude,
+                             loc.coordinate.longitude,
+                             spd,
+                             (int)loc.course,
+                             (int)loc.horizontalAccuracy,
+                             [dateFormat stringFromDate:loc.timestamp]];
+        
         NSMutableArray *addToCache = [[NSMutableArray alloc] initWithArray:urlCache];
-        [addToCache addObject:data];
+        [addToCache addObject:sendURL];
         [prefs setObject:[NSArray arrayWithArray:addToCache] forKey:@"data.cache"];
         
-        if ((int)floor(1000 / self.packetSize) == [addToCache count]) {
-            
-            [self.timer invalidate];
-            
-            // flush to tcp server
-            [self call:addToCache];
-            [self setTimer];
-        }
+        // flush to tcp server
+        [self call:addToCache];
     }
 }
 
@@ -282,32 +208,21 @@
     if (self.reachable == NO || [urlCache count] == 0) {
         return;
     }
-    
-    NSError *err = nil;
-    
-    if (![socket connectToHost:@"boattrack.informme.de" onPort:8100 error:&err]) // Asynchronous!
-    {
-        // If there was an error, it's likely something like "already connected" or "no delegate set"
-        NSLog(@"I goofed: %@", err);
-    }
      
     for(int i = 0; i < [urlCache count]; i++)
     {
-        [socket writeData:(NSData *)[urlCache objectAtIndex:i] withTimeout:-1 tag:8100];
+        NSString *urlStr = [urlCache objectAtIndex:i];
+        NSString *encodedStr = [urlStr stringByAddingPercentEscapesUsingEncoding:NSASCIIStringEncoding];
+        NSURL *url = [NSURL URLWithString:encodedStr];
+        if (url != nil) {
+            NSData *data = [NSData dataWithContentsOfURL:url];
+            NSLog(@"%@", data);
+        }
     }
     
-    [socket disconnectAfterWriting];
-    
-    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    int bytesSent = (int)[prefs integerForKey:@"bytes.sent"];
-    bytesSent += self.packetSize * [urlCache count];
-    [prefs setObject:[NSNumber numberWithInt:bytesSent] forKey:@"bytes.sent"];
-    
     // flush cache
+    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     [prefs setObject:[NSArray arrayWithArray:[NSMutableArray array]] forKey:@"data.cache"];
-    
-    ViewController *viewContr = (ViewController *)self.window.rootViewController;
-    [viewContr.bytesSent setText:[NSString stringWithFormat:@"%i", bytesSent]];
 }
 
 @end

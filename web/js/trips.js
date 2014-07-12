@@ -66,7 +66,9 @@ $(function() {
 		// RENDER
 		render: function() {
 			// create a map in the "map" div, set the view to a given place and zoom
-			this.map = L.map("map");
+			this.map = L.map("map", {
+				measureControl: true
+			});
 
 			$(".leaflet-control-attribution").hide();
 
@@ -78,6 +80,10 @@ $(function() {
 				maxZoom: 17,
 				minZoom: 10
 			}).addTo(this.map);
+
+			/*L.tileLayer('http://{s}.tile.openweathermap.org/map/wind/{z}/{x}/{y}.png', {
+			    maxZoom: 18
+			}).addTo(this.map);*/
 
 			// load assets
 			var that = this;
