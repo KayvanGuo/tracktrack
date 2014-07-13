@@ -88,3 +88,13 @@ var MapView = Backbone.View.extend({
 		    .openOn(this.map);
 	}
 });
+
+$(function() {
+
+	// logout
+	$(document).on("click", "a.logout", function() {
+		localStorage.removeItem("e");
+		localStorage.removeItem("p");
+		location.href = "/";
+	});
+});

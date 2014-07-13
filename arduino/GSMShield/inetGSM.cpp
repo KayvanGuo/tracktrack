@@ -56,82 +56,6 @@ int InetGSM::httpGET(const char* server, int port, const char* path, char* resul
      return res;
 }
 
-int InetGSM::sendTCP(const char* server, int port, char *boatIdBuf, char *latBuf, char *lonBuf, char *speedBuf, char *courseBuf, char *hdopBuf, char *secondsBuf, char *minutesBuf, char *hoursBuf, char *dayBuf, char *monthBuf, char *yearBuf, char* result, int resultlength)
-{
-     boolean connected=false;
-     int n_of_at=0;
-     int length_write;
-     char end_c[2];
-     end_c[0]=0x1a;
-     end_c[1]='\0';
-
-     /*
-     Status = ATTACHED.
-     if(gsm.getStatus()!=GSM::ATTACHED)
-       return 0;
-     */
-     while(n_of_at<3) {
-          if(!connectTCP(server, port)) {
-#ifdef DEBUG_ON
-               Serial.println("DB:NOT CONN");
-#endif
-               n_of_at++;
-          } else {
-               connected=true;
-               n_of_at=3;
-          }
-     }
-
-     if(!connected) return 0;
-
-     char header[3];
-     header[0] = 'A';
-     header[1] = 'A';
-     header[2] = 'A';
-
-     gsm.SimpleWrite(header);
-     gsm.SimpleWrite(boatIdBuf);
-
-     Serial.write(latBuf);
-
-     gsm.SimpleWrite(latBuf);
-     gsm.SimpleWrite(lonBuf);
-     gsm.SimpleWrite(speedBuf);
-     gsm.SimpleWrite(courseBuf);
-     gsm.SimpleWrite(hdopBuf);
-     gsm.SimpleWrite(secondsBuf);
-     gsm.SimpleWrite(minutesBuf);
-     gsm.SimpleWrite(hoursBuf);
-     gsm.SimpleWrite(dayBuf);
-     gsm.SimpleWrite(monthBuf);
-     gsm.SimpleWrite(yearBuf);
-     gsm.SimpleWrite(end_c);
-
-     switch(gsm.WaitResp(10000, 10, "SEND OK")) {
-     case RX_TMOUT_ERR:
-          return 0;
-          break;
-     case RX_FINISHED_STR_NOT_RECV:
-          return 0;
-          break;
-     }
-
-
-     delay(50);
-#ifdef DEBUG_ON
-     Serial.println("DB:SENT");
-#endif
-     int res = gsm.read(result, resultlength);
-
-     Serial.println("Kurz vor disconnectTCP");
-
-     disconnectTCP();
-
-     //int res=1;
-     return res;
-}
-
-
 int InetGSM::httpPOST(const char* server, int port, const char* path, const char* parameters, char* result, int resultlength)
 {
      boolean connected=false;
@@ -531,7 +455,7 @@ int InetGSM::connectTCP(const char* server, int port)
      Serial.println("DB:OK TCP");
 #endif
 
-     delay(3000);
+     /*delay(3000);
      gsm.SimpleWriteln("AT+CIPSEND");
      switch(gsm.WaitResp(5000, 200, ">")) {
      case RX_TMOUT_ERR:
@@ -545,7 +469,7 @@ int InetGSM::connectTCP(const char* server, int port)
 #ifdef DEBUG_ON
      Serial.println("DB:>");
 #endif
-     delay(4000);
+     delay(4000);*/
      return 1;
 }
 

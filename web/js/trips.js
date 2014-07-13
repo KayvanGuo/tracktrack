@@ -1,32 +1,5 @@
 $(function() {
 
-	// MENU VIEW
-	var MenuView = Backbone.View.extend({
-		el: "#menu",
-
-		events: {
-			"click .logout": "logout"
-		},
-
-		// INITIALIZE
-		initialize: function(owner) {
-			this.render();
-		},
-
-		// RENDER
-		render: function() {
-			var t = _.template($("#menuTpl").html());
-            this.$el.html(t);
-		},
-
-		// LOGOUT
-		logout: function() {
-			localStorage.removeItem("e");
-			localStorage.removeItem("p");
-			location.href = "/";
-		}
-	});
-
 	// MAP VIEW
 	var IndexMapView = MapView.extend({
 		el: "#map",
@@ -286,7 +259,6 @@ $(function() {
 
         	var owner = 2;
 
-        	window.menuView = new MenuView();
         	window.mapView = new IndexMapView({
         		"owner": owner
         	});

@@ -21,7 +21,7 @@
     // Override point for customization after application launch.
     locationManager = [[CLLocationManager alloc] init];
     locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
-    locationManager.distanceFilter = 1;
+    locationManager.distanceFilter = 3;
     locationManager.delegate = self;
     locationManager.pausesLocationUpdatesAutomatically = YES;
     locationManager.activityType = CLActivityTypeFitness;

@@ -84,25 +84,12 @@ function serveHtml(res, file, next) {
 }
 
 // HOME
-app.get("/", function(req, res) {
-
-	serveHtml(res, "login.html", function(html) {
-		return res.send(html);
-	});
-});
-
-// TRIPS
-app.get("/trips", function(req, res) {
-
-	serveHtml(res, "trips.html", function(html) {
-		return res.send(html);
-	});
-});
+app.get("/", function(req, res) { serveHtml(res, "login.html", function(html) { return res.send(html); }); });
+app.get("/trips", function(req, res) { serveHtml(res, "trips.html", function(html) { return res.send(html); }); });
+app.get("/dashboard", function(req, res) { serveHtml(res, "dashboard.html", function(html) { return res.send(html); }); });
 
 // LOGIN
 app.post("/login", function(req, res) {
-
-	console.log(req.body);
 
 	//do the login
 	loginFn(req.body.email, req.body.password, function(err, user) {
@@ -512,3 +499,26 @@ io.on("connection", function (socket) {
 		}
 	});
 });
+
+/*
+ _______ _____ _____     _____ ______ _______      ________ _____  
+|__   __/ ____|  __ \   / ____|  ____|  __ \ \    / /  ____|  __ \ 
+   | | | |    | |__) | | (___ | |__  | |__) \ \  / /| |__  | |__) |
+   | | | |    |  ___/   \___ \|  __| |  _  / \ \/ / |  __| |  _  / 
+   | | | |____| |       ____) | |____| | \ \  \  /  | |____| | \ \ 
+   |_|  \_____|_|      |_____/|______|_|  \_\  \/   |______|_|  \_\
+*/
+
+net.createServer(function(c) {
+
+	// DATA
+	c.on("data", function(d) {
+		console.log(d.toString());
+	});
+
+	// END
+	c.on("end", function() {
+
+	});
+
+}).listen(8100);

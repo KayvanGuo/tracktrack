@@ -8,7 +8,6 @@
 #include <inttypes.h>
 #include "WideTextFinder.h"
 
-
 #define ctrlz 26 //Ascii character for ctr+z. End of a SMS.
 #define cr    13 //Ascii character for carriage return. 
 #define lf    10 //Ascii character for line feed. 

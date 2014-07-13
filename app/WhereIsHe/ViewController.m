@@ -43,10 +43,10 @@
 
 -(void)loadValues:(NSTimer *)theTimer
 {
-    // WaITING COUNT
+    // WAITING COUNT
     NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     NSArray *dataCache = [prefs arrayForKey:@"data.cache"];
-    self.waitingCount.text = [NSString stringWithFormat:@"%i", [dataCache count]];
+    self.waitingCount.text = [NSString stringWithFormat:@"%i", (int)[dataCache count]];
 }
 
 - (void)didReceiveMemoryWarning

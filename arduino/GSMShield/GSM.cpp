@@ -293,6 +293,7 @@ int GSM::begin(long baud_rate)
      SetCommLineStatus(CLS_FREE);
 
      if(turnedON) {
+
           WaitResp(50, 50);
           InitParam(PARAM_SET_0);
           InitParam(PARAM_SET_1);//configure the module
