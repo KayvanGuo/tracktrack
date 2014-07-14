@@ -1,9 +1,28 @@
-#include "SIM900.h"
 #include <SoftwareSerial.h>
+#include <string.h>
+#include "SIM900.h"
 #include "TCP.h"
+#include "inetGSM.h"
 
 TCP tcp;
+InetGSM inet;
 boolean gsmReady = false;
+
+struct trackdata
+{
+    int hwid;
+    float lat;
+    float lon; 
+    float speed; 
+    int16_t course; 
+    int16_t hdop;
+    int8_t seconds;
+    int8_t minutes;
+    int8_t hours;
+    int8_t day;
+    int8_t month;
+    int16_t year;
+};
 
 // SETUP
 void setup()
@@ -11,7 +30,6 @@ void setup()
     Serial.begin(9600);
   
     // establish serial connection to gps module
-    gps.begin(9600);
     Serial.println("GSM Shield testing.");
     if(gsm.begin(2400)) 
     {
@@ -50,10 +68,40 @@ void setup()
 // LOOP
 void loop() 
 {
+    Serial.println("Start loop");
+
+    /*trackdata d;
+
+    d.hwid = 100000;
+    d.lat = 50.54637829;
+    d.lon = 7.9876323;
+    d.speed = 3.1;
+    d.course = 128;
+    d.hdop = 10;
+    d.seconds = 3;
+    d.minutes = 19;
+    d.hours = 12;
+    d.day = 14;
+    d.month = 7;
+    d.year = 2014;*/
+
+    char hwidBuf[6];
+
+    hwidBuf[0] = 0x03;
+    hwidBuf[1] = 0x04;
+    hwidBuf[2] = 0x05;
+    hwidBuf[3] = 0x06;
+    hwidBuf[4] = 0x07;
+    hwidBuf[5] = 0x08;
+
+    //memcpy(hwidBuf, &hwid, sizeof(int));
+
+    //Serial.write(hwidBuf);
+
     tcp.connect("tracktrack.io", 8100);
-
-    char *msg = "Dies ist meine erste Nachricht";
-    tcp.send(msg, 30);
-
+    //char msg[] = "Dies ist meine erste Nachricht";
+    tcp.send(hwidBuf, 6);
     tcp.disconnect();
+
+    delay(10000);
 };

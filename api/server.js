@@ -513,12 +513,14 @@ net.createServer(function(c) {
 
 	// DATA
 	c.on("data", function(d) {
-		console.log(d.toString());
+		console.log(new Date(), d);
+		//console.log(d.toString());
+		//console.log(d.readInt32LE(0));
 	});
 
 	// END
 	c.on("end", function() {
-
+		console.log("end");
 	});
 
 }).listen(8100);

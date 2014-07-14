@@ -368,14 +368,14 @@ int SIMCOM900::getIMEI(char *imei)
      //_cell.flush();
 
      //AT command to get IMEI.
-     SimpleWriteln(F("AT+GSN"));
+     SimpleWriteln(F("AT+CGSN"));
 
      //Read response from modem
 #ifdef UNO
-     _tf.getString("\r\n","\r\n",imei, 16);
+     _tf.getString("AT+CGSN\r\n","\r\n",imei, 16);
 #endif
 #ifdef MEGA
-     _cell.getString("\r\n","\r\n",imei, 16);
+     _cell.getString("AT+CGSN\r\n","\r\n",imei, 16);
 #endif
 
      //Expect str_ok.
@@ -424,6 +424,12 @@ void SIMCOM900::SimpleWrite(int comm)
 void SIMCOM900::SimpleWrite(const __FlashStringHelper *pgmstr)
 {
      _cell.print(pgmstr);
+}
+
+void SIMCOM900::SimpleBinaryWriteln(char comm[])
+{
+    _cell.write(comm);
+    //_cell.write(comm);
 }
 
 void SIMCOM900::SimpleWriteln(char *comm)

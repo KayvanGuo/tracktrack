@@ -30,6 +30,7 @@ public:
      void SimpleWrite(char const *comm);
      void SimpleWrite(int comm);
      void SimpleWrite(const __FlashStringHelper *pgmstr);
+     void SimpleBinaryWriteln(char comm[]);
      void SimpleWriteln(char *comm);
      void SimpleWriteln(char const *comm);
      void SimpleWriteln(const __FlashStringHelper *pgmstr);

@@ -5,8 +5,8 @@
 //
 TCP::TCP() 
 {
-	_logger = new LOG(1);
-} 
+	//_logger = LOG::LOG(1);
+};
 
 //
 // ATTACH GPRS
@@ -21,7 +21,7 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
 
     if(gsm.WaitResp(5000, 50, "ERROR") != RX_FINISHED_STR_RECV) 
     {
-     	_logger.CRITICAL("ALREADY HAVE AN IP")
+     	Serial.println("ALREADY HAVE AN IP");
 
      	// close will always throw an error
     	gsm.SimpleWriteln("AT+CIPCLOSE");
@@ -35,7 +35,7 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
     } 
     else 
     {
-    	_logger.INFO("STARTING NEW CONNECTION");
+    	Serial.println("STARTING NEW CONNECTION");
 
         gsm.SimpleWriteln("AT+CIPSHUT");
 
@@ -50,7 +50,7 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
             	break;
         }
 
-        _logger.INFO("SHUTTED OK");
+        Serial.println("SHUTTED OK");
         delay(1000);
 
 		gsm.SimpleWrite("AT+CSTT=\"");
@@ -72,7 +72,7 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
               	break;
         }
 
-        _logger.INFO("APN OK");
+        Serial.println("APN OK");
 
         delay(5000);
 
@@ -89,19 +89,19 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
 		   		break;
 		}
 
-		_logger.INFO("CONNECTION OK");
+		Serial.println("CONNECTION OK");
         
         delay(1000);
 
         gsm.SimpleWriteln("AT+CIFSR");
         if(gsm.WaitResp(5000, 50, "ERROR")!=RX_FINISHED_STR_RECV) 
         {
-        	_logger.INFO("ASSIGNED AN IP");
+        	Serial.println("ASSIGNED AN IP");
             gsm.setStatus(gsm.ATTACHED);
             return 1;
         }
 
-        _logger.CRITICAL("NO IP AFTER CONNECTION");
+        Serial.println("NO IP AFTER CONNECTION");
         return 0;
      }
 }
@@ -152,7 +152,7 @@ int TCP::connect(const char *server, int port)
          	break;
     }
 
-    _logger.INFO("RECVD CMD");
+    Serial.println("RECVD CMD");
 
     if(!gsm.IsStringReceived("CONNECT OK")) 
     {
@@ -168,7 +168,7 @@ int TCP::connect(const char *server, int port)
         }
     }
 
-    _logger.INFO("OK TCP");
+    Serial.println("OK TCP");
 
     return 1;
 }
@@ -176,9 +176,9 @@ int TCP::connect(const char *server, int port)
 //
 // SEND
 //
-int send(char *msg, int msglength) 
+int TCP::send(char msg[], int msglength) 
 {
-	delay(3000);
+	//delay(3000);
 
     gsm.SimpleWrite("AT+CIPSEND=");
     gsm.SimpleWriteln(msglength);
@@ -195,7 +195,7 @@ int send(char *msg, int msglength)
     }
 
     // send the message
-    gsm.SimpleWriteln(msg);
+    gsm.SimpleBinaryWriteln(msg);
 
     // wait for the send to be done
     switch(gsm.WaitResp(10000, 10, "SEND OK")) 

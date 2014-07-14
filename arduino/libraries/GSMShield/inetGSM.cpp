@@ -31,7 +31,14 @@ int InetGSM::httpGET(const char* server, int port, const char* path, char* resul
 
      if(!connected) return 0;
 
-     gsm.SimpleWrite("Hallo Welt");
+     gsm.SimpleWrite("GET ");
+     gsm.SimpleWrite(path);
+     gsm.SimpleWrite(" HTTP/1.0\r\nHost: ");
+     gsm.SimpleWrite(server);
+     gsm.SimpleWrite("\r\n");
+     gsm.SimpleWrite("User-Agent: Arduino");
+     gsm.SimpleWrite(0x00);
+     gsm.SimpleWrite("\r\n\r\n");
      gsm.SimpleWrite(end_c);
 
      switch(gsm.WaitResp(10000, 10, "SEND OK")) {
@@ -296,7 +303,7 @@ int InetGSM::attachGPRS(char* domain, char* dom1, char* dom2)
      int i=0;
      delay(5000);
 
-     //gsm._tf.setTimeout(_GSM_DATA_TOUT_);	//Timeout for expecting modem responses.
+     //gsm._tf.setTimeout(_GSM_DATA_TOUT_);  //Timeout for expecting modem responses.
      gsm.WaitResp(50, 50);
      gsm.SimpleWriteln("AT+CIFSR");
      if(gsm.WaitResp(5000, 50, "ERROR")!=RX_FINISHED_STR_RECV) {
@@ -405,7 +412,7 @@ int InetGSM::dettachGPRS()
      // Commented in initial trial code!!
      //Stop IP stack.
      //_cell << "AT+WIPCFG=0" <<  _DEC(cr) << endl;
-     //	if(!gsm._tf.find("OK")) return 0;
+     //   if(!gsm._tf.find("OK")) return 0;
      //Close GPRS bearer.
      //_cell << "AT+WIPBR=0,6" <<  _DEC(cr) << endl;
 
@@ -455,7 +462,7 @@ int InetGSM::connectTCP(const char* server, int port)
      Serial.println("DB:OK TCP");
 #endif
 
-     /*delay(3000);
+     delay(3000);
      gsm.SimpleWriteln("AT+CIPSEND");
      switch(gsm.WaitResp(5000, 200, ">")) {
      case RX_TMOUT_ERR:
@@ -469,7 +476,7 @@ int InetGSM::connectTCP(const char* server, int port)
 #ifdef DEBUG_ON
      Serial.println("DB:>");
 #endif
-     delay(4000);*/
+     delay(4000);
      return 1;
 }
 
@@ -492,15 +499,6 @@ int InetGSM::disconnectTCP()
 
      //Close TCP client and deact.
      gsm.SimpleWriteln("AT+CIPCLOSE");
-
-     switch(gsm.WaitResp(1000, 200, "OK")) {
-     case RX_TMOUT_ERR:
-          return 0;
-          break;
-     case RX_FINISHED_STR_NOT_RECV:
-          return 0;
-          break;
-     }
 
      //If remote server close connection AT+QICLOSE generate ERROR
      /*if(gsm._tf.find("OK"))
@@ -537,21 +535,21 @@ int InetGSM::connectTCPServer(int port)
      gsm.SimpleWriteln(port);
      /*
        switch(gsm.WaitResp(5000, 50, "OK")){
-     	case RX_TMOUT_ERR:
-     		return 0;
-     	break;
-     	case RX_FINISHED_STR_NOT_RECV:
-     		return 0;
-     	break;
+          case RX_TMOUT_ERR:
+               return 0;
+          break;
+          case RX_FINISHED_STR_NOT_RECV:
+               return 0;
+          break;
        }
 
        switch(gsm.WaitResp(5000, 50, "SERVER")){ //Try SERVER OK
-     	case RX_TMOUT_ERR:
-     		return 0;
-     	break;
-     	case RX_FINISHED_STR_NOT_RECV:
-     		return 0;
-     	break;
+          case RX_TMOUT_ERR:
+               return 0;
+          break;
+          case RX_FINISHED_STR_NOT_RECV:
+               return 0;
+          break;
        }
      */
      //delay(200);
@@ -573,10 +571,10 @@ boolean InetGSM::connectedClient()
      /*
      switch(gsm.WaitResp(1000, 200, "OK")){
      case RX_TMOUT_ERR:
-     	return 0;
+          return 0;
      break;
      case RX_FINISHED_STR_NOT_RECV:
-     	return 0;
+          return 0;
      break;
      }*/
      //gsm._tf.setTimeout(1);
