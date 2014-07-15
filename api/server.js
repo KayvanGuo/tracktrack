@@ -212,6 +212,7 @@ app.get("/position/:trip/:latitude/:longitude", function(req, res) {
 
 		if(err) throw err;
 
+		// TODO: umstellen auf geohash
 		c.query("SELECT p.*, (POW(69.1 * (latitude - " + pool.escape(req.params.latitude) +"), 2) + POW(69.1 * (" + pool.escape(req.params.longitude) + " - longitude) * COS(latitude / 57.3), 2)) AS distance FROM positions AS p WHERE p.trip = " + pool.escape(req.params.trip) + " ORDER BY distance LIMIT 1", function(err, rows) {
 
 			if(err) throw err;
@@ -311,8 +312,6 @@ app.get("/assets/:owner", function(req, res) {
 // GET /tileproxy
 app.get("/tileproxy", function(req, res) {
 
-	var blank = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAABFUlEQVR4nO3BMQEAAADCoPVP7WsIoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAMBPAABPO1TCQAAAABJRU5ErkJggg==";
-
 	if(req.query.url.indexOf("tile") == -1) {
 		return res.send(403, null);
 	}
@@ -322,159 +321,6 @@ app.get("/tileproxy", function(req, res) {
 
 		res.header("Content-Type", "image/png");
 		return imgres.pipe(res);
-	});
-});
-
-// RECEPTION
-app.get("/reception", function(req, res) {
-
-	var boat = parseInt(req.query.boat);
-	var lat = parseFloat(req.query.lat);
-	var lon = parseFloat(req.query.lon);
-	var speed = parseFloat(req.query.speed);
-	var course = parseInt(req.query.course);
-	var time = req.query.timestamp;
-	var hdop = parseInt(req.query.hdop);
-
-	console.log(req.query);
-
-	res.send("ok");
-
-	pool.getConnection(function(err, c) {
-
-		if(err) throw err;
-
-		var position = {
-			"boat": boat,
-			"latitude": lat,
-			"longitude": lon,
-			"speed": speed,
-			"course": course,
-			"timestamp": time,
-			"hdop": hdop,
-			"geohash": geohash.encode(lat, lon, 10)
-		};
-
-		// fn: find a trip out of this position
-		var findTrip = function(rows, c, position, next) {
-
-			// check if a row exists
-			if(rows.length >= 1) {
-
-				switch(rows[0].tripType) {
-					
-					// manuel
-					case 0: 
-						return next(null);
-						break;
-
-					// leaving mooring
-					case 1: 
-
-						var isAtMooring = geolib.isPointInCircle(
-						    position,
-						    rows[0], 
-						    rows[0].radius
-						);
-
-						// boat is not at the mooring ...
-						if(!isAtMooring) {
-
-							// ... and currently not on a trip, ...
-							if(rows[0].currentTrip == null) {
-
-								var newTrip = {
-									"key": shortid.generate(),
-									"boat": position.boat,
-									"type": 1,
-									"start": moment.utc().format("YYYY-MM-DD HH:mm:ss"),
-									"finish": null
-								};
-
-								// ... create new trip
-								c.query("INSERT INTO trips SET ?", newTrip, function(err, tripResult) {
-
-									var newTripId = tripResult.insertId;
-									c.query("UPDATE boats SET currentTrip = " + newTripId + " WHERE id = " + position.boat);
-									return next(newTripId);
-								});
-							}
-
-							// there is currently a trip going on
-							else {
-								return next(rows[0].currentTrip);
-							}
-						}
-
-						// boat is back at the mooring ...
-						else {
-
-							// ... and there is currently a trip going on, ...
-							if(rows[0].currentTrip != null) {
-
-								// find last position of trip
-								c.query("SELECT latitude, longitude, speed FROM positions WHERE trip = " + rows[0].currentTrip + " ORDER BY timestamp", function(err, positions) {
-
-									// store the distance of the trip
-									var dist = 0.0;
-									var vmax = 0.0;
-									for(var i = 0; i < positions.length - 1; i++) {
-										dist += geolib.getDistance(positions[i], positions[i + 1]);
-										if(positions[i].speed > vmax) vmax = positions[i].speed;
-									}
-
-									// meters to nautical miles
-									dist = dist * 0.000539956803;
-
-									c.query("UPDATE trips SET distance = " + dist + " WHERE id = " + rows[0].currentTrip);
-									c.query("UPDATE trips SET vmax = " + vmax + " WHERE id = " + rows[0].currentTrip);
-								});
-
-								// ... stop it
-								c.query("UPDATE boats SET currentTrip = NULL WHERE id = " + position.boat);
-								c.query("UPDATE trips SET finish = '" + moment.utc().format("YYYY-MM-DD HH:mm:ss") + "' WHERE id = " + rows[0].currentTrip);
-							
-								return next(null);
-							}
-						}
-
-						break;
-
-					// timebased
-					case 2: 
-						return next(null);
-						break;
-				}
-			}
-			else return next(null);
-		};
-
-		// check which triptype is selected and where the mooring is
-		c.query("SELECT b.tripType, b.currentTrip, m.latitude, m.longitude, m.radius, b.owner FROM boats as b JOIN moorings as m ON m.boat = b.id WHERE b.id = " + position.boat, function(err, rows) {
-
-			if(err) throw err;
-
-			// find trip and then insert position
-			findTrip(rows, c, position, function(trip) {
-
-				// insert new position
-				position["trip"] = trip;
-				c.query("INSERT INTO positions SET ?", position, function(err, result) {
-
-					// set the pointer to the last known position 
-					c.query("UPDATE boats SET lastPosition = " + result.insertId + " WHERE id = " + position.boat);
-					c.release();
-				});
-				
-				// populate to websocket
-				io.sockets.in("owner_" + rows[0].owner).emit("position", position);
-				if(trip) io.sockets.in("trip_" + trip).emit("position", position);
-
-			}, function(err) {
-				if (err) throw err;
-			});
-
-		});
 	});
 });
 
@@ -509,18 +355,228 @@ io.on("connection", function (socket) {
    |_|  \_____|_|      |_____/|______|_|  \_\  \/   |______|_|  \_\
 */
 
+// zerofill
+function zero(n) { return (n < 10) ? "0" + n : n }
+
 net.createServer(function(c) {
 
+	var buf = null;
+
 	// DATA
-	c.on("data", function(d) {
-		console.log(new Date(), d);
-		
-		console.log(d.readInt32LE(0));
+	c.on("data", function(data) {
+
+		console.log(data);
+
+		if(buf == null) {
+			buf = data;
+		}
+		else {
+			var tmp = new Buffer(buf.length + data.length);
+
+			// buf.copy(targetBuffer, [targetStart], [sourceStart], [sourceEnd])
+			buf.copy(tmp, 0);
+			data.copy(tmp, buf.length);
+
+			buf = tmp;
+		}
 	});
 
 	// END
 	c.on("end", function() {
-		console.log("end");
+
+		pool.getConnection(function(err, c) {
+
+			if(err) throw err;
+
+			var boatPositions = {};
+
+			// store the raw data, for error logging purposes
+			c.query("INSERT INTO rawdata SET ?", {
+				"timestamp": moment.utc().toDate(),
+				"data": buf
+			});
+
+			// check for the first occurance of "AAA"
+			for(var i = 0; i < buf.length; i++) {
+
+				// not enough data anyway, break out of the loop
+				if(i + 4 >= buf.length) break;
+
+				// is this a valid "MCGP" message?
+				if(buf[i] == 77 && buf[i + 1] == 67 && buf[i + 2] == 71 && buf[i + 3] == 80) {
+
+					// slice a message piece out?
+					var working = buf.slice(i, i + 32);
+
+					// interpret and store working buffer
+					var dateString = working.readInt16LE(29) + "-" + zero(working.readInt8(28)) + "-" + zero(working.readInt8(27)) + " " + zero(working.readInt8(26)) + ":" + zero(working.readInt8(25)) + ":" + zero(working.readInt8(24));
+
+					var position = {
+						"hwid": working.readInt32LE(4),
+						"latitude": working.readFloatLE(8),
+						"longitude": working.readFloatLE(12),
+						"speed": working.readFloatLE(16),
+						"course": working.readInt16LE(20),
+						"hdop": working.readInt16LE(22),
+						"timestamp": dateString
+					};
+
+					// add new array to positions dict
+					if(!(position.hwid in boatPositions)) {
+						boatPositions[position.hwid] = [];
+					}
+
+					boatPositions[position.hwid].push(position);
+
+					i += 31;
+				}
+			}
+
+			// loop all keys of boat positions
+			for(var key in boatPositions) {
+
+				// fn: find a trip out of this position
+				var findTrip = function(rows, c, position, next) {
+
+					// check if a row exists
+					if(rows.length >= 1) {
+
+						// decide by triptype to check what to do
+						switch(rows[0].tripType) {
+
+							// manuel
+							case 0: 
+								return next(null);
+								break;
+
+							// leaving mooring
+							case 1: 
+
+								var isAtMooring = geolib.isPointInCircle(
+								    position,
+								    rows[0], 
+								    rows[0].radius
+								);
+
+								// boat is not at the mooring ...
+								if(!isAtMooring) {
+
+									// ... and currently not on a trip, ...
+									if(rows[0].currentTrip == null) {
+
+										var newTrip = {
+											"key": shortid.generate(),
+											"boat": position.boat,
+											"type": 1,
+											"start": moment.utc().format("YYYY-MM-DD HH:mm:ss"),
+											"finish": null
+										};
+
+										// ... create new trip
+										c.query("INSERT INTO trips SET ?", newTrip, function(err, tripResult) {
+
+											var newTripId = tripResult.insertId;
+											c.query("UPDATE boats SET currentTrip = " + newTripId + " WHERE id = " + position.boat);
+											return next(newTripId);
+										});
+									}
+
+									// there is currently a trip going on
+									else {
+										return next(rows[0].currentTrip);
+									}
+								}
+
+								// boat is back at the mooring ...
+								else {
+
+									// ... and there is currently a trip going on, ...
+									if(rows[0].currentTrip != null) {
+
+										// find last position of trip
+										c.query("SELECT latitude, longitude, speed FROM positions WHERE trip = " + rows[0].currentTrip + " ORDER BY timestamp", function(err, positions) {
+
+											// store the distance of the trip
+											var dist = 0.0;
+											var vmax = 0.0;
+											for(var i = 0; i < positions.length - 1; i++) {
+												dist += geolib.getDistance(positions[i], positions[i + 1]);
+												if(positions[i].speed > vmax) vmax = positions[i].speed;
+											}
+
+											// meters to nautical miles
+											dist = dist * 0.000539956803;
+
+											c.query("UPDATE trips SET distance = " + dist + " WHERE id = " + rows[0].currentTrip);
+											c.query("UPDATE trips SET vmax = " + vmax + " WHERE id = " + rows[0].currentTrip);
+										});
+
+										// ... stop it
+										c.query("UPDATE boats SET currentTrip = NULL WHERE id = " + position.boat);
+										c.query("UPDATE trips SET finish = '" + moment.utc().format("YYYY-MM-DD HH:mm:ss") + "' WHERE id = " + rows[0].currentTrip);
+
+										return next(null);
+									}
+								}
+
+								break;
+
+							// timebased
+							case 2: 
+								return next(null);
+								break;
+						}
+					}
+					else return next(null);
+				};
+
+				async.eachSeries(boatPositions[key], function(position, callback) {
+
+					// get boat id from devices via hwid
+					c.query("SELECT boat FROM devices WHERE hwid = ?", [position.hwid], function(err, devices) {
+
+						if(err || devices.length != 1) return callback(err, null);
+
+						position.boat = devices[0].boat;
+						delete position.hwid;
+
+						console.log(position);
+
+						// check which triptype is selected and where the mooring is
+						c.query("SELECT b.tripType, b.currentTrip, m.latitude, m.longitude, m.radius, b.owner FROM boats as b JOIN moorings as m ON m.boat = b.id WHERE b.id = " + position.boat, function(err, rows) {
+
+							if(err) throw err;
+
+							// find trip and then insert position
+							findTrip(rows, c, position, function(trip) {
+
+								// insert new position
+								position["trip"] = trip;
+								console.log(position);
+								c.query("INSERT INTO positions SET ?", position, function(err, result) {
+
+									// set the pointer to the last known position 
+									c.query("UPDATE boats SET lastPosition = " + result.insertId + " WHERE id = " + position.boat);
+								});
+
+								// populate to websocket
+								io.sockets.in("owner_" + rows[0].owner).emit("position", position);
+								if(trip) io.sockets.in("trip_" + trip).emit("position", position);
+
+								callback();
+
+							}, function(err) {
+								if (err) throw err;
+							});
+
+						});
+					});
+				});
+			}
+
+			c.release();
+
+		});
 	});
 
 }).listen(8100);

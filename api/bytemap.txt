@@ -1,34 +1,44 @@
- 0	X
- 1 	Y
- 2 	Z
- 3	IMEI (int64)
- 4
+ 0	M
+ 1 	C
+ 2 	G
+ 3  P
+ 4	IMEI (int64)
  5
  6
  7
- 8
+ 8	Latitude (float32)
  9
 10
-11	Latitude (float32)
-12
+11
+12	Longitude (float32)
 13
 14
-15	Longitude (float32)
-16
+15
+16	Speed (float32)
 17
 18
-19	Speed (float32)
-20
+19
+20	Course (int16)
 21
-22
-23	Course (int16)
-24
-25 	HDOP (int16)
-26
-27	UTC time - seconds (int8)
-28	UTC time - minutes (int8)
-39	UTC time - hours (int8)
-30	UTC time - day (int8)
-31	UTC time - month (int8)
-32	UTC time - year (int16)
-33
+22 	HDOP (int16)
+23
+24	UTC time - seconds (int8)
+25	UTC time - minutes (int8)
+26	UTC time - hours (int8)
+27	UTC time - day (int8)
+28	UTC time - month (int8)
+29	UTC time - year (int16)
+30
+31 	Status
+
+
+:: Status ::
+
+Bit 1 	Anchored 	
+Bit 2
+Bit 3
+Bit 4
+Bit 5
+Bit 6
+Bit 7
+Bit 8

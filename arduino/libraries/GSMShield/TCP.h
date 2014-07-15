@@ -11,7 +11,7 @@ public:
     int dettachGPRS();
     int connect(const char *server, int port);
     int disconnect();
-    int send(char msg[], int msglength);
+    int send(unsigned char msg[], int msglength);
 };
 
 #endif

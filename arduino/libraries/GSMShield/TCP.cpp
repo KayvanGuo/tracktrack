@@ -176,7 +176,7 @@ int TCP::connect(const char *server, int port)
 //
 // SEND
 //
-int TCP::send(char msg[], int msglength) 
+int TCP::send(unsigned char msg[], int msglength) 
 {
 	//delay(3000);
 

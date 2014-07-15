@@ -426,7 +426,7 @@ void SIMCOM900::SimpleWrite(const __FlashStringHelper *pgmstr)
      _cell.print(pgmstr);
 }
 
-void SIMCOM900::SimpleBinaryWriteln(char comm[], int count)
+void SIMCOM900::SimpleBinaryWriteln(unsigned char comm[], int count)
 {
     for(int i = 0; i < count; i++) 
     {
