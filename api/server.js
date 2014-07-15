@@ -514,8 +514,8 @@ net.createServer(function(c) {
 	// DATA
 	c.on("data", function(d) {
 		console.log(new Date(), d);
-		//console.log(d.toString());
-		//console.log(d.readInt32LE(0));
+		
+		console.log(d.readInt32LE(0));
 	});
 
 	// END

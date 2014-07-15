@@ -2,10 +2,8 @@
 #include <string.h>
 #include "SIM900.h"
 #include "TCP.h"
-#include "inetGSM.h"
 
 TCP tcp;
-InetGSM inet;
 boolean gsmReady = false;
 
 struct trackdata
@@ -85,22 +83,15 @@ void loop()
     d.month = 7;
     d.year = 2014;*/
 
-    char hwidBuf[6];
-
-    hwidBuf[0] = 0x03;
-    hwidBuf[1] = 0x04;
-    hwidBuf[2] = 0x05;
-    hwidBuf[3] = 0x06;
-    hwidBuf[4] = 0x07;
-    hwidBuf[5] = 0x08;
-
-    //memcpy(hwidBuf, &hwid, sizeof(int));
+    char hwidBuf[4];
+    int hwid = 100000;
+    memcpy(hwidBuf, &hwid, sizeof(int));
 
     //Serial.write(hwidBuf);
 
     tcp.connect("tracktrack.io", 8100);
-    //char msg[] = "Dies ist meine erste Nachricht";
-    tcp.send(hwidBuf, 6);
+
+    tcp.send(hwidBuf, 4);
     tcp.disconnect();
 
     delay(10000);

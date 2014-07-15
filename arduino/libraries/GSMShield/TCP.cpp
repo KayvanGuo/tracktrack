@@ -195,7 +195,7 @@ int TCP::send(char msg[], int msglength)
     }
 
     // send the message
-    gsm.SimpleBinaryWriteln(msg);
+    gsm.SimpleBinaryWriteln(msg, msglength);
 
     // wait for the send to be done
     switch(gsm.WaitResp(10000, 10, "SEND OK")) 
