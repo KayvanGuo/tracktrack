@@ -49,7 +49,7 @@ $(function() {
 			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
 
 			// add seamark layer
-			L.tileLayer("https://tracktrack.io/tileproxy?url=http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
+			L.tileLayer("https://tracktrack.io/api/tileproxy?url=http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
 				maxZoom: 17,
 				minZoom: 10
 			}).addTo(this.map);
@@ -60,7 +60,7 @@ $(function() {
 
 			// load assets
 			var that = this;
-			$.getJSON("/assets/" + this.params.owner, function(data) {
+			$.getJSON("/api/assets/" + this.params.owner, function(data) {
 				
 				var bounds = [];
 				for(var i in data) {
@@ -117,7 +117,7 @@ $(function() {
 
 			var that = this;
 
-			$.getJSON("/boats/" + params.owner, function(boats) {
+			$.getJSON("/api/boats/" + params.owner, function(boats) {
 				that.boats = boats;
 				that.render();
 			});
@@ -140,7 +140,7 @@ $(function() {
 			var that = this;
 
 			// load the trips for this boat
-			$.getJSON($(e.target).attr("href").replace("#", ""), function(data) {
+			$.getJSON("/api" + $(e.target).attr("href").replace("#", ""), function(data) {
 				var t = _.template($("#tripContentTpl").html(), {
 					trips: data
 				});
@@ -155,14 +155,15 @@ $(function() {
 		show: function(e) {
 			var $e = $(e.target).parents(".actions");
 
-			console.log(window.mapView.currentTrip);
+			window.mapView.removeBoatPath();
+
 			if(window.mapView.currentTrip == $e.data("id")) {
 				window.mapView.removeBoatPath();
 				$(e.target).text("anzeigen");
 			}
 			else {
-				$.getJSON("/positions/" + $e.data("id"), function(positions) {
-					window.mapView.addBoatPath($e.data("id"), positions);
+				$.getJSON("/api/positions/" + $e.data("id"), function(p) {
+					window.mapView.addBoatPath($e.data("id"), p);
 					$("html, body").animate({ scrollTop: 0}, "fast");
 					$(".showTrip").text("anzeigen");
 					$(e.target).text("ausblenden");			
@@ -175,7 +176,7 @@ $(function() {
 			var $e = $(e.target).parents(".actions");
 
 			if(confirm("Wirklich löschen?") == true) {
-				$.getJSON("/trips/delete/" + $e.data("id"), function(result) {
+				$.getJSON("/api/trips/delete/" + $e.data("id"), function(result) {
 					
 					// deletion went well, remove row
 					if(result.success) {
@@ -223,28 +224,6 @@ $(function() {
   			setTimeout(function() { 
   				$(event.target).select(); 
   			}, 1); 
-		}
-	})
-
-	// FLEET VIEW
-	var FleetView = Backbone.View.extend({
-		el: "#fleet",
-		boats: null,
-
-		// INITIALIZE
-		initialize: function(params) {
-			this.boats = params.boats;
-			this.render();
-		},
-
-		// RENDER
-		render: function() {
-
-			var t = _.template($("#fleetTpl").html(), {
-				boats: this.boats
-			});
-
-            this.$el.html(t);
 		}
 	});
 

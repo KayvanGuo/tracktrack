@@ -25,7 +25,7 @@ $(function() {
 			var that = this;
 
 			// fetch the trip id from key
-			$.getJSON("/trip/" + key, function(trip) {
+			$.getJSON("/api/trip/" + key, function(trip) {
 				that.trip = trip;
 
 				if(that.trip.id) {
@@ -69,7 +69,7 @@ $(function() {
 			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
 
 			// add seamark layer
-			L.tileLayer("//tracktrack.io/tileproxy?url=http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
+			L.tileLayer("//tracktrack.io/api/tileproxy?url=http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
 				maxZoom: 17,
 				minZoom: 10
 			}).addTo(this.map);
@@ -77,14 +77,14 @@ $(function() {
 			var that = this;
 
 			// fetch the positions of this trip
-			$.getJSON("/positions/" + this.trip.id, function(positions) {
-				that.addBoatPath(that.trip.id, positions, {
+			$.getJSON("/api/positions/" + this.trip.id, function(p) {
+				that.addBoatPath(that.trip.id, p, {
 					fit: !that.options.f
 				});	
 			});
 
 			// fetch the assets
-			$.getJSON("/assets/" + this.trip.owner, function(data) {
+			$.getJSON("/api/assets/" + this.trip.owner, function(data) {
 				
 				for(var i in data) {
 

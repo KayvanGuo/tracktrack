@@ -7,13 +7,16 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <CoreLocation/CoreLocation.h>
 
-@interface ViewController : UIViewController
+@interface ViewController : UIViewController <UITextFieldDelegate>
 
 @property (readwrite) IBOutlet UITextField *waitingCount;
 @property (readwrite) IBOutlet UIButton *bytesSentRevert;
 @property (readwrite) IBOutlet UISwitch *onOff;
 @property (readwrite) IBOutlet UITextField *bytesSent;
+@property (readwrite) IBOutlet UITextField *labelSentMsg;
+@property (readwrite) IBOutlet UIButton *labelSentButton;
 @property (nonatomic, retain) NSTimer *timer;
 
 - (void)startUpdating;

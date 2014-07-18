@@ -111,7 +111,7 @@ app.get("/embed/:key/", function(req, res) {
 });
 
 // GET /BOATS
-app.get("/boats/:owner", passport.authenticate("basic", { session: false }), function(req, res) {
+app.get("/api/boats/:owner", passport.authenticate("basic", { session: false }), function(req, res) {
 
 	if(req.user.owner != parseInt(req.params.owner)) {
 		return res.send(403);
@@ -134,7 +134,7 @@ app.get("/boats/:owner", passport.authenticate("basic", { session: false }), fun
 });
 
 // GET /trips
-app.get("/trips/:boat", passport.authenticate("basic", { session: false }), function(req, res) {
+app.get("/api/trips/:boat", passport.authenticate("basic", { session: false }), function(req, res) {
 
 	// get connaction from pool
 	pool.getConnection(function(err, c) {
@@ -153,7 +153,7 @@ app.get("/trips/:boat", passport.authenticate("basic", { session: false }), func
 });
 
 // GET /trip/:key
-app.get("/trip/:key", function(req, res) {
+app.get("/api/trip/:key", function(req, res) {
 
 	// get connaction from pool
 	pool.getConnection(function(err, c) {
@@ -172,7 +172,7 @@ app.get("/trip/:key", function(req, res) {
 });
 
 // GET /trips/delete/
-app.get("/trips/delete/:id", passport.authenticate("basic", { session: false }),  function(req, res) {
+app.get("/api/trips/delete/:id", passport.authenticate("basic", { session: false }),  function(req, res) {
 
 	// get connaction from pool
 	pool.getConnection(function(err, c) {
@@ -189,24 +189,69 @@ app.get("/trips/delete/:id", passport.authenticate("basic", { session: false }),
 });
 
 // GET positions
-app.get("/positions/:trip", function(req, res) {
+app.get("/api/positions/:trip", function(req, res) {
 
-	// get connection from pool
-	pool.getConnection(function(err, c) {
+	async.parallel({
 
-		if(err) throw err;
+		// positions
+		positions: function(callback) {
 
-		c.query("SELECT latitude, longitude, speed, course, timestamp, anchored FROM positions WHERE trip = " + pool.escape(req.params.trip) + " ORDER BY timestamp", function(err, rows) {
-			if(err) throw err;
-	    	c.release();
+			// get connection from pool
+			pool.getConnection(function(err, c) {
 
-	    	return res.send(rows);
-		});
-	});
+				if(err) throw err;
+
+				c.query("SELECT latitude, longitude, speed, course, timestamp FROM positions WHERE trip = " + pool.escape(req.params.trip) + " ORDER BY timestamp", function(err, rows) {
+					if(err) throw err;
+			    	c.release();
+
+			    	return callback(null, rows);
+				});
+			});
+		},
+
+		// labels
+		labels: function(callback) {
+
+			// get connection from pool
+			pool.getConnection(function(err, c) {
+
+				if(err) throw err;
+
+				// get the start and finish time for the trip
+				c.query("SELECT start, finish FROM trips WHERE id = " + pool.escape(req.params.trip), function(err, rows) {
+					if(err) throw err;
+
+					if(rows.length == 1) {
+						
+						// compose the query for fetching the labels
+						var q = "SELECT latitude, longitude, title FROM labels WHERE timestamp >= " + pool.escape(rows[0].start);
+						if(rows[0].finish) q += " AND timestamp <= " + pool.escape(rows[0].finish);
+						
+						// get labels
+						c.query(q, function(err, rows) {
+							if(err) throw err;
+
+							c.release();
+							return callback(null, rows);
+						});
+
+					}
+					else {
+						c.release();
+						return callback(null, null);
+					}
+				});
+			});
+		}
+	},
+	function(err, results) {
+		return res.send(results);
+	});	
 });
 
 // GET position
-app.get("/position/:trip/:latitude/:longitude", function(req, res) {
+app.get("/api/position/:trip/:latitude/:longitude", function(req, res) {
 
 	pool.getConnection(function(err, c) {
 
@@ -223,8 +268,33 @@ app.get("/position/:trip/:latitude/:longitude", function(req, res) {
 	});
 });
 
+// POST label/add
+app.post("/api/label/add", function(req, res) {
+
+	pool.getConnection(function(err, c) {
+
+		if(err) throw err;
+
+		var data = {
+			"boat": req.body.boat,
+			"title": req.body.title,
+			"timestamp": req.body.timestamp || moment().utc().toDate(),
+			"latitude": parseFloat(req.body.latitude),
+			"longitude": parseFloat(req.body.longitude)
+		};
+
+		c.query("INSERT INTO labels SET ?", data, function(err, results) {
+
+			c.release();
+
+			if(!err) return res.send(true);
+			else return res.send(false);
+		});
+	});
+});
+
 // GET /assets/
-app.get("/assets/:owner", function(req, res) {
+app.get("/api/assets/:owner", function(req, res) {
 
 	async.parallel({
 
@@ -310,7 +380,7 @@ app.get("/assets/:owner", function(req, res) {
 });
 
 // GET /tileproxy
-app.get("/tileproxy", function(req, res) {
+app.get("/api/tileproxy", function(req, res) {
 
 	if(req.query.url.indexOf("tile") == -1) {
 		return res.send(403, null);
@@ -468,7 +538,7 @@ net.createServer(function(c) {
 											"key": shortid.generate(),
 											"boat": position.boat,
 											"type": 1,
-											"start": moment.utc().format("YYYY-MM-DD HH:mm:ss"),
+											"start": position.timestamp,
 											"finish": null
 										};
 
@@ -513,7 +583,7 @@ net.createServer(function(c) {
 
 										// ... stop it
 										c.query("UPDATE boats SET currentTrip = NULL WHERE id = " + position.boat);
-										c.query("UPDATE trips SET finish = '" + moment.utc().format("YYYY-MM-DD HH:mm:ss") + "' WHERE id = " + rows[0].currentTrip);
+										c.query("UPDATE trips SET finish = '" + position.timestamp + "' WHERE id = " + rows[0].currentTrip);
 
 										return next(null);
 									}
@@ -552,7 +622,6 @@ net.createServer(function(c) {
 
 								// insert new position
 								position["trip"] = trip;
-								console.log(position);
 								c.query("INSERT INTO positions SET ?", position, function(err, result) {
 
 									// set the pointer to the last known position 
