@@ -99,7 +99,7 @@ void loop()
     Serial.println("Start loop");
 
     struct trackdata d = getPosition();
-    if (d.hdop < HDOP_THRESHOLD)
+    if (d.hdop >= 0 && d.hdop < HDOP_THRESHOLD)
     {
         // check if anchor guard is active
         anchorGuard(lastValidPosition);

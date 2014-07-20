@@ -211,6 +211,8 @@ $(function() {
 			url += $(".followVals input[type='radio']:checked").val();	// follow
 			url += "&a=";
 			url += ($("#assets").prop("checked")) ? "1" : "0";	// assets
+			url += "&l=";
+			url += ($("#labels").prop("checked")) ? "1" : "0";	// labels
 
 			var iframe = "<iframe src=\"" + url + "\" width=\"" + $("#embedWidth").val() + "\" height=\"" + $("#embedHeight").val() + "\" frameborder=\"0\"></iframe>";
 

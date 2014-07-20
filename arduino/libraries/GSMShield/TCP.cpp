@@ -178,7 +178,7 @@ int TCP::connect(const char *server, int port)
 //
 int TCP::send(unsigned char msg[], int msglength) 
 {
-	//delay(3000);
+	delay(3000);
 
     gsm.SimpleWrite("AT+CIPSEND=");
     gsm.SimpleWriteln(msglength);
@@ -224,11 +224,11 @@ int TCP::disconnect()
     {
     	case RX_TMOUT_ERR:
         	return 0;
-          	break;
+            break;
      	
      	case RX_FINISHED_STR_NOT_RECV:
         	return 0;
-          	break;
+            break;
     }
 
     if(gsm.getStatus() == gsm.TCPCONNECTEDCLIENT) 

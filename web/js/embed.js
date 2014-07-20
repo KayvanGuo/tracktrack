@@ -79,7 +79,8 @@ $(function() {
 			// fetch the positions of this trip
 			$.getJSON("/api/positions/" + this.trip.id, function(p) {
 				that.addBoatPath(that.trip.id, p, {
-					fit: !that.options.f
+					fit: !that.options.f,
+					labels: that.options.l
 				});	
 			});
 

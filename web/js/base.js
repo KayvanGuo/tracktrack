@@ -46,7 +46,8 @@ var MapView = Backbone.View.extend({
 		this.currentTrip = trip;
 
 		var options = $.extend({
-			fit: true
+			fit: true,
+			labels: true
 		}, params);
 
 		var that = this;
@@ -62,13 +63,15 @@ var MapView = Backbone.View.extend({
 			coords.push(L.latLng(data.positions[i].latitude, data.positions[i].longitude));
 		}
 
-		for(var i in data.labels) {
-			var l = L.marker([data.labels[i].latitude, data.labels[i].longitude])
-				.setIcon(this.icons.blank)
-				.bindLabel(data.labels[i].title, { noHide: true, direction: "auto" })
-				.addTo(this.map);
+		if(options.labels == true) {
+			for(var i in data.labels) {
+				var l = L.marker([data.labels[i].latitude, data.labels[i].longitude])
+					.setIcon(this.icons.blank)
+					.bindLabel(data.labels[i].title, { noHide: true, direction: "auto" })
+					.addTo(this.map);
 
-			this.labels.push(l);
+				this.labels.push(l);
+			}
 		}
 
 		// create polyline

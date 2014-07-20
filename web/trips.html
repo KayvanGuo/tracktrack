@@ -139,12 +139,12 @@
                                         <label class="options-label">Zoom:</label>
                                         <div class="radio">
                                           <label>
-                                            <input type="radio" class="embedPreviewChange" name="follow" value="1" checked> &nbsp;Dem Boot folgen
+                                            <input type="radio" class="embedPreviewChange" name="follow" value="1"> &nbsp;Dem Boot folgen
                                           </label>
                                         </div>
                                         <div class="radio" style="padding-left:10px">
                                           <label>
-                                            <input type="radio" class="embedPreviewChange" name="follow" value="0"> &nbsp;Tourübersicht anzeigen
+                                            <input type="radio" class="embedPreviewChange" name="follow" value="0" checked> &nbsp;Tourübersicht anzeigen
                                           </label>
                                         </div>
                                     </div>
@@ -154,7 +154,13 @@
 
                                         <div class="checkbox">
                                             <label>
-                                                <input type="checkbox" class="embedPreviewChange" id="assets" value="1">  &nbsp;Hafenanlagen anzeigen
+                                                <input type="checkbox" class="embedPreviewChange" id="assets" value="1" checked>  &nbsp;Hafenanlagen anzeigen
+                                            </label>
+                                        </div>
+
+                                        <div class="checkbox" style="padding-left:10px">
+                                            <label>
+                                                <input type="checkbox" class="embedPreviewChange" id="labels" value="1" checked>  &nbsp;Labels anzeigen
                                             </label>
                                         </div>
                                     </div>
@@ -250,9 +256,8 @@
                 </td>
             </tr>
             <tr>
-                <th></th>
-                <td>
-                    <button type="button" class="btn btn-link addLabelBtn">Label hier anlegen</button>
+                <td colspan="2">
+                    <button type="button" class="btn btn-link addLabelBtn"><i class="fa fa-pencil"></i> Label hier anlegen</button>
                 </td>
             </tr>
         </table>

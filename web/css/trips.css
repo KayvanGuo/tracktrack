@@ -30,3 +30,7 @@
 .options-group {
 	padding-bottom: 15px;
 }
+
+.addLabelBtn {
+	margin-left: -15px!important;
+}

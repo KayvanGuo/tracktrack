@@ -432,10 +432,16 @@ net.createServer(function(c) {
 
 	var buf = null;
 
+	c.on("error", function(err) {
+		console.log("Caught flash policy server socket error: ");
+	    console.log(err.stack);
+	});
+
 	// DATA
 	c.on("data", function(data) {
 
 		console.log(data);
+		//c.send("ok");
 
 		if(buf == null) {
 			buf = data;
@@ -453,6 +459,8 @@ net.createServer(function(c) {
 
 	// END
 	c.on("end", function() {
+
+		console.log(buf);
 
 		pool.getConnection(function(err, c) {
 
@@ -488,7 +496,8 @@ net.createServer(function(c) {
 						"speed": working.readFloatLE(16),
 						"course": working.readInt16LE(20),
 						"hdop": working.readInt16LE(22),
-						"timestamp": dateString
+						"timestamp": dateString,
+						"geohash": geohash.encode(working.readFloatLE(8), working.readFloatLE(12), 10)
 					};
 
 					// add new array to positions dict
