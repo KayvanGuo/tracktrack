@@ -274,7 +274,7 @@ struct trackdata getPosition()
     // get received HDOP value
     ihdop = gpsencoder.hdop();
 
-    struct trackdata position = {3,flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear};
+    struct trackdata position = {100000,flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear};
     return position;
 }
 
