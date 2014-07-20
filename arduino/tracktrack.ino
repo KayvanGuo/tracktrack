@@ -3,7 +3,7 @@
 #include <SoftwareSerial.h>
 #include "SIM900.h"
 #include "TCP.h"
-#include "TinyGPS.h"
+#include <TinyGPS.h>
 
 struct trackdata
 {
@@ -19,7 +19,6 @@ struct trackdata
     int8_t day;
     int8_t month;
     int16_t year;
-    boolean anchored;
 };
 
 // PIN SETTINGS
@@ -30,7 +29,7 @@ int GPS_ANCHOR_BUTTON = 10;
 int GPS_ANCHOR_LED = 11;
 
 // CONSTANTS
-int HDOP_THRESHOLD = 200;
+int HDOP_THRESHOLD = 2000;
 float ANCHOR_RANGE = 4;
 
 // INSTANCES
@@ -53,60 +52,61 @@ void setup()
     pinMode(GPS_ANCHOR_LED, OUTPUT);
 
     Serial.begin(9600);
-
-    // establish serial connection to gps module
-    gps.begin(9600);
   
     // establish serial connection to gps module
-    Serial.println("GSM Shield testing.");
-    if(gsm.begin(2400)) 
-    {
-        Serial.println("\nstatus=READY");
-        gsmReady = true;
-    }
-    else 
-    {
-        Serial.println("\nstatus=IDLE"); 
-    } 
-  
-    // GSM shield is ready
-    if(gsmReady)
-    {
-        // GPRS attach, put in order APN, username and password.
-        // If no needed auth let them blank.
-        if(tcp.attachGPRS("pinternet.interkom.de", "", ""))
-        {
-            Serial.println("status=ATTACHED");
-        }
-        else 
-        {
-            Serial.println("status=ERROR");
-        }
-    
-        delay(1000);
-
-        // Read IP address.
-        gsm.SimpleWriteln("AT+CIFSR");
-        delay(5000);
-    
-        gsm.WhileSimpleRead();
-    }
+    Serial.println("GSM Shield...");
 };
 
 // LOOP
 void loop() 
 {
     Serial.println("Start loop");
-
+    gps.begin(9600);
+    delay(2000);
     struct trackdata d = getPosition();
+    gps.end();
+
+    // position valid?
     if (d.hdop >= 0 && d.hdop < HDOP_THRESHOLD)
     {
+        if(gsm.begin(2400)) 
+        {
+            Serial.println("\nstatus=READY");
+            gsmReady = true;
+        }
+        else 
+        {
+            Serial.println("\nstatus=IDLE"); 
+        } 
+      
+        // GSM shield is ready
+        if(gsmReady)
+        {
+            // GPRS attach, put in order APN, username and password.
+            // If no needed auth let them blank.
+            if(tcp.attachGPRS("pinternet.interkom.de", "", ""))
+            {
+                Serial.println("status=ATTACHED");
+            }
+            else 
+            {
+                Serial.println("status=ERROR");
+            }
+        
+            delay(500);
+
+            // Read IP address.
+            gsm.SimpleWriteln("AT+CIFSR");
+            delay(1000);
+        
+            gsm.WhileSimpleRead();
+        }
+
         // check if anchor guard is active
-        anchorGuard(lastValidPosition);
-        d.anchored = guardAnchor;
+        anchorGuard(d);
 
         lastValidPosition = d;
-        printPosition(lastValidPosition);
+        printPosition(d);
 
         unsigned char pos[32];
         pos[0] = 'M';
@@ -178,18 +178,21 @@ void loop()
 
         pos[31] = 0;
 
+        Serial.println(pos[24]);
+
         // send the position via tcp to server
         tcp.connect("tracktrack.io", 8100);
         tcp.send(pos, 32);
         tcp.disconnect();
+
+        //gsm.end();
+        delay(1000);
     }
     else
     {
         Serial.print("Bad HDOP: ");
         Serial.println(d.hdop);
     }
-
-    delay(10000);
 };
 
 // INT32 TO BUFFER
@@ -256,73 +259,73 @@ void anchorGuard(struct trackdata position)
 // GET POSITION
 struct trackdata getPosition()
 {
-    readGPS(700);
+  readGPS(700);
 
-    float flat, flon, fspeed;
-    int16_t icourse, ihdop, iyear;
-    int8_t ihundredths, iseconds, iminutes, ihours, iday, imonth;
-    unsigned long age;
+  float flat, flon, fspeed;
+  int16_t icourse, ihdop, iyear;
+  int8_t ihundredths, iseconds, iminutes, ihours, iday, imonth;
+  unsigned long age;
 
-    // get received position data
-    gpsencoder.f_get_position(&flat, &flon, &age);
-    // crack received date and time data into seperate variables
-    crack_datetime(&iyear, &imonth, &iday, &ihours, &iminutes, &iseconds, &ihundredths, &age);
-    // get received speed in knots
-    fspeed = gpsencoder.f_speed_knots();
-    // get received course
-    icourse = (int16_t) gpsencoder.course()/100;
-    // get received HDOP value
-    ihdop = gpsencoder.hdop();
-
-    struct trackdata position = {100000,flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear};
-    return position;
+  // get received position data
+  gpsencoder.f_get_position(&flat, &flon, &age);
+  // crack received date and time data into seperate variables
+  crack_datetime(&iyear, &imonth, &iday, &ihours, &iminutes, &iseconds, &ihundredths, &age);
+  // get received speed in knots
+  fspeed = gpsencoder.f_speed_knots();
+  // get received course
+  icourse = (int16_t) gpsencoder.course()/100;
+  // get received HDOP value
+  ihdop = gpsencoder.hdop();
+  
+  struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear};
+  return position;
 }
 
 // PRINT POSTION
 void printPosition(struct trackdata position)
 {       
-    Serial.print("LAT=");
-    Serial.print(position.lat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : position.lat, 6);
-    Serial.print(" LON=");
-    Serial.print(position.lon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : position.lon, 6);
-    Serial.print(" SPEED=");
-    Serial.print(position.speed);
-    Serial.print(" COURSE=");
-    Serial.print(position.course);
-    Serial.print(" HDOP=");
-    Serial.print(position.hdop);
-    Serial.print(" DATE=");
-    char sz[32];
-    sprintf(sz, "%02d-%02d-%02d %02d:%02d:%02d ", position.year, position.month, position.day, position.hours, position.minutes, position.seconds);
-    Serial.print(sz);
-    Serial.println();
+  Serial.print("LAT=");
+  Serial.print(position.lat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : position.lat, 6);
+  Serial.print(" LON=");
+  Serial.print(position.lon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : position.lon, 6);
+  Serial.print(" SPEED=");
+  Serial.print(position.speed);
+  Serial.print(" COURSE=");
+  Serial.print(position.course);
+  Serial.print(" HDOP=");
+  Serial.print(position.hdop);
+  Serial.print(" DATE=");
+  char sz[32];
+  sprintf(sz, "%02d-%02d-%02d %02d:%02d:%02d ", position.year, position.month, position.day, position.hours, position.minutes, position.seconds);
+  Serial.print(sz);
+  Serial.println();
 }  
 
 // CRACK DATE AND TIME
 void crack_datetime(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int8_t *minute, int8_t *second, int8_t *hundredths, unsigned long *age)
 {
-    unsigned long date, time;
-    gpsencoder.get_datetime(&date, &time, age);
-    if (year) 
-    {
-        *year = date % 100;
-        *year += *year > 80 ? 1900 : 2000;
-    }
-    if (month) *month = (date / 100) % 100;
-    if (day) *day = date / 10000;
-    if (hour) *hour = time / 1000000;
-    if (minute) *minute = (time / 10000) % 100;
-    if (second) *second = (time / 100) % 100;
-    if (hundredths) *hundredths = time % 100;
+  unsigned long date, time;
+  gpsencoder.get_datetime(&date, &time, age);
+  if (year) 
+  {
+    *year = date % 100;
+    *year += *year > 80 ? 1900 : 2000;
+  }
+  if (month) *month = (date / 100) % 100;
+  if (day) *day = date / 10000;
+  if (hour) *hour = time / 1000000;
+  if (minute) *minute = (time / 10000) % 100;
+  if (second) *second = (time / 100) % 100;
+  if (hundredths) *hundredths = time % 100;
 }
 
 // READ GPS
 static void readGPS(unsigned long ms)
 {
-    unsigned long start = millis();
-    do 
-    {
-        while (gps.available())
-            gpsencoder.encode(gps.read());
-    } while (millis() - start < ms);
+  unsigned long start = millis();
+  do 
+  {
+    while (gps.available())
+    gpsencoder.encode(gps.read());
+  } while (millis() - start < ms);
 }

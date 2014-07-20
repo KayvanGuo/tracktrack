@@ -178,7 +178,7 @@ int TCP::connect(const char *server, int port)
 //
 int TCP::send(unsigned char msg[], int msglength) 
 {
-	delay(3000);
+	//delay(3000);
 
     gsm.SimpleWrite("AT+CIPSEND=");
     gsm.SimpleWriteln(msglength);
@@ -186,6 +186,7 @@ int TCP::send(unsigned char msg[], int msglength)
     switch(gsm.WaitResp(5000, 200, ">")) 
     { 
      	case RX_TMOUT_ERR:
+            Serial.println("RX_TMOUT_ERR");
         	return 0;
           	break;
      
@@ -193,6 +194,8 @@ int TCP::send(unsigned char msg[], int msglength)
         	return 0;
         	break;
     }
+
+    Serial.println("SENDEN!");
 
     // send the message
     gsm.SimpleBinaryWriteln(msg, msglength);
@@ -218,7 +221,7 @@ int TCP::send(unsigned char msg[], int msglength)
 int TCP::disconnect()
 {
     //Close TCP client and deact.
-    gsm.SimpleWriteln("AT+CIPCLOSE");
+    gsm.SimpleWriteln("AT+CIPCLOSE=1");
 
     switch(gsm.WaitResp(1000, 200, "OK")) 
     {
