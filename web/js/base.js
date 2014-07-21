@@ -65,7 +65,7 @@ var MapView = Backbone.View.extend({
 
 		if(options.labels == true) {
 			for(var i in data.labels) {
-				this.addLabel(data.labels[i]);
+				this.addLabelMarker(data.labels[i]);
 			}
 		}
 
@@ -90,7 +90,7 @@ var MapView = Backbone.View.extend({
 	},
 
 	// ADD LABEL
-	addLabel: function(data) {
+	addLabelMarker: function(data) {
 		var l = L.marker([data.latitude, data.longitude])
 			.setIcon(this.icons.blank)
 			.bindLabel(data.title, { noHide: true, direction: "auto" })

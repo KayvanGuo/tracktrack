@@ -265,14 +265,8 @@
         [addToCache addObject:data];
         [prefs setObject:[NSArray arrayWithArray:addToCache] forKey:@"data.cache"];
         
-        if ((int)floor(1000 / self.packetSize) == [addToCache count]) {
-            
-            [self.timer invalidate];
-            
-            // flush to tcp server
-            [self call:addToCache];
-            [self setTimer];
-        }
+        // flush to tcp server
+        [self call:addToCache];
     }
 }
 

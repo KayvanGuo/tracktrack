@@ -27,9 +27,10 @@ int GPS_RX = 8;
 int GPS_SPEAKER = 9;
 int GPS_ANCHOR_BUTTON = 10;
 int GPS_ANCHOR_LED = 11;
+int BAD_POSITION_LED = 13;
 
 // CONSTANTS
-int HDOP_THRESHOLD = 50;
+int HDOP_THRESHOLD = 150;
 float ANCHOR_RANGE = 15; // meters
 int DISTANCE_FILTER = 1; // meters
 
@@ -37,12 +38,11 @@ int DISTANCE_FILTER = 1; // meters
 TinyGPS gpsencoder;
 SoftwareSerial gps(GPS_TX, GPS_RX);
 boolean guardAnchor = false;
-struct trackdata lastValidPosition = {100000, 0.0, 0.0, -1, -1, -1, 0, 0, 0, 0, 0, 0};
+struct trackdata lastValidPosition;
 struct trackdata guardedPosition;
 
 TCP tcp;
 boolean gsmReady = false;
-boolean firstRun
 
 // SETUP
 void setup()
@@ -52,9 +52,17 @@ void setup()
     pinMode(GPS_ANCHOR_BUTTON, INPUT);
     digitalWrite(GPS_ANCHOR_BUTTON, HIGH);
     pinMode(GPS_ANCHOR_LED, OUTPUT);
+    pinMode(BAD_POSITION_LED, OUTPUT);
+
+    lastValidPosition.hwid = 100000;
+    lastValidPosition.lat = 0.0;
+    lastValidPosition.lon = 0.0;
+    lastValidPosition.course = -1;
+    lastValidPosition.hdop = -1;
+    lastValidPosition.speed = -1;
 
     Serial.begin(9600);
-
+  
     // init GPS serial connection
     gps.begin(9600);
 
@@ -97,8 +105,6 @@ void setup()
 // LOOP
 void loop() 
 {
-    Serial.println("Start loop");
-    
     gps.listen();
     struct trackdata d = getPosition();
 
@@ -118,6 +124,11 @@ void loop()
         // the last position is
         if(distance >= DISTANCE_FILTER)
         {
+            digitalWrite(BAD_POSITION_LED, LOW);
+
+            // check if anchor guard is active
+            anchorGuard(d);
+
             lastValidPosition = d;
             printPosition(d);
 
@@ -131,10 +142,10 @@ void loop()
             unsigned char hwidBuf[4];
             int32ToBuffer(hwidBuf, d.hwid);
 
-            pos[4] = hwidBuf[0];
-            pos[5] = hwidBuf[1];
-            pos[6] = hwidBuf[2];
-            pos[7] = hwidBuf[3];
+            pos[4]  = hwidBuf[0];
+            pos[5]  = hwidBuf[1];
+            pos[6]  = hwidBuf[2];
+            pos[7]  = hwidBuf[3];
 
             // latitude
             unsigned char latBuf[4];
@@ -201,11 +212,13 @@ void loop()
             tcp.disconnect();
         }
 
+        //gsm.end();
         delay(1000);
     }
     else
     {
         Serial.print("Bad Position: ");
+        digitalWrite(BAD_POSITION_LED, HIGH);
         printPosition(d);
     }
 };
@@ -230,6 +243,17 @@ void int16ToBuffer(unsigned char *buf, int16_t value)
 void floatToBuffer(unsigned char *buf, float value) 
 {
     memcpy(buf, &value, 4);
+}
+
+// VALIDATE POSITION
+boolean validatePosition(struct trackdata pos) 
+{
+    if(pos.lat > 0.0 && pos.lat <= 180.0 && pos.lon > 0.0 && pos.lon <= 180.0 && pos.hdop >= 0 && pos.speed >= 0.0 && pos.course >= 0 && pos.hdop <= HDOP_THRESHOLD)
+    {
+        return true;
+    }
+
+    return false;
 }
 
 void anchorGuard(struct trackdata position)
@@ -288,9 +312,9 @@ struct trackdata getPosition()
   // get received speed in knots
   fspeed = gpsencoder.f_speed_knots();
   // get received course
-  icourse = (int16_t) gpsencoder.course() / 100;
+  icourse = (int16_t) gpsencoder.course()/100;
   // get received HDOP value
-  ihdop = (int16_t) gpsencoder.hdop() / 100;
+  ihdop = gpsencoder.hdop();
   
   struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear};
   return position;
@@ -315,17 +339,6 @@ void printPosition(struct trackdata position)
   Serial.print(sz);
   Serial.println();
 }  
-
-// VALIDATE POSITION
-boolean validatePosition(struct trackdata pos) 
-{
-    if(pos.lat > 0 && pos.lat <= 180 && pos.lon > 0 && pos.lon <= 180 && pos.hdop >= 0 && pos.speed >= 0 && pos.course >= 0 && pos.hdop <= HDOP_THRESHOLD)
-    {
-        return true;
-    }
-
-    return false;
-}
 
 // CRACK DATE AND TIME
 void crack_datetime(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int8_t *minute, int8_t *second, int8_t *hundredths, unsigned long *age)

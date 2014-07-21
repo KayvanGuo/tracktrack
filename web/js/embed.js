@@ -60,7 +60,7 @@ $(function() {
 					// get new label update
 					socket.on("label", function(data) {
 						console.log(data);
-						that.addLabel(data);
+						that.addLabelMarker(data);
 					});
 				}
 			});
