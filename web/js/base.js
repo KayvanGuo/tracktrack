@@ -65,12 +65,7 @@ var MapView = Backbone.View.extend({
 
 		if(options.labels == true) {
 			for(var i in data.labels) {
-				var l = L.marker([data.labels[i].latitude, data.labels[i].longitude])
-					.setIcon(this.icons.blank)
-					.bindLabel(data.labels[i].title, { noHide: true, direction: "auto" })
-					.addTo(this.map);
-
-				this.labels.push(l);
+				this.addLabel(data.labels[i]);
 			}
 		}
 
@@ -92,6 +87,16 @@ var MapView = Backbone.View.extend({
 		if(options.fit == true) {
 			this.map.fitBounds(L.latLngBounds(coords));
 		}
+	},
+
+	// ADD LABEL
+	addLabel: function(data) {
+		var l = L.marker([data.latitude, data.longitude])
+			.setIcon(this.icons.blank)
+			.bindLabel(data.title, { noHide: true, direction: "auto" })
+			.addTo(this.map);
+
+		this.labels.push(l);
 	},
 
 	// REMOVE BOAT PATH

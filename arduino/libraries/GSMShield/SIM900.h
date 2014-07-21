@@ -13,6 +13,7 @@ private:
 public:
      SIMCOM900();
      ~SIMCOM900();
+     void listen();
      int getCCI(char* cci);
      int getIMEI(char* imei);
      int sendSMS(const char* to, const char* msg);

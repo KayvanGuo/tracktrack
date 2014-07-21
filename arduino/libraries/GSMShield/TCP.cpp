@@ -14,7 +14,7 @@ TCP::TCP()
 int TCP::attachGPRS(char *apn, char *user, char *pass)
 {
     int i = 0;
-    delay(5000);
+    delay(500);
 
     gsm.WaitResp(50, 50);
     gsm.SimpleWriteln("AT+CIFSR");
@@ -27,7 +27,7 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
     	gsm.SimpleWriteln("AT+CIPCLOSE");
     	gsm.WaitResp(5000, 50, "ERROR");
       	
-      	delay(2000);
+      	delay(500);
       	gsm.SimpleWriteln("AT+CIPSERVER=0");
       	gsm.WaitResp(5000, 50, "ERROR");
 
@@ -51,7 +51,7 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
         }
 
         Serial.println("SHUTTED OK");
-        delay(1000);
+        delay(500);
 
 		gsm.SimpleWrite("AT+CSTT=\"");
 		gsm.SimpleWrite(apn);
@@ -74,7 +74,7 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
 
         Serial.println("APN OK");
 
-        delay(5000);
+        delay(500);
 
         gsm.SimpleWriteln("AT+CIICR");
 
@@ -91,7 +91,7 @@ int TCP::attachGPRS(char *apn, char *user, char *pass)
 
 		Serial.println("CONNECTION OK");
         
-        delay(1000);
+        delay(500);
 
         gsm.SimpleWriteln("AT+CIFSR");
         if(gsm.WaitResp(5000, 50, "ERROR")!=RX_FINISHED_STR_RECV) 

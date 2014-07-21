@@ -287,6 +287,18 @@ app.post("/api/label/add", function(req, res) {
 
 			c.release();
 
+			// check if the boat has a current trip, ...
+			c.query("SELECT currentTrip FROM boats WHERE id = " + pool.escape(data.boat), function(err, rows) {
+				if(!err && rows.length == 1) {
+
+					// ... if so, push the new label to the trip socket group
+					if(rows[0].currentTrip) {
+
+						io.sockets.in("trip_" + rows[0].currentTrip).emit("label", data);
+					}
+				}
+			});
+
 			if(!err) return res.send(true);
 			else return res.send(false);
 		});
@@ -440,7 +452,7 @@ net.createServer(function(c) {
 	// DATA
 	c.on("data", function(data) {
 
-		console.log(data);
+		//console.log(data);
 		//c.send("ok");
 
 		if(buf == null) {
@@ -460,7 +472,7 @@ net.createServer(function(c) {
 	// END
 	c.on("end", function() {
 
-		console.log(buf);
+		//console.log(buf);
 
 		pool.getConnection(function(err, c) {
 
@@ -619,7 +631,7 @@ net.createServer(function(c) {
 						position.boat = devices[0].boat;
 						delete position.hwid;
 
-						console.log(position);
+						//console.log(position);
 
 						// check which triptype is selected and where the mooring is
 						c.query("SELECT b.tripType, b.currentTrip, m.latitude, m.longitude, m.radius, b.owner FROM boats as b JOIN moorings as m ON m.boat = b.id WHERE b.id = " + position.boat, function(err, rows) {

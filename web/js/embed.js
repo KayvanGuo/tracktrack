@@ -45,6 +45,9 @@ $(function() {
 
 								// set boat to new position
 								that.assets[i].setLatLng(l);
+								that.map.panTo(l, {
+									animate: true
+								});
 
 								// if there is a boatpath available, add to this
 								if(that.boatpath) {
@@ -52,6 +55,12 @@ $(function() {
 								}
 							}
 						}
+					});
+
+					// get new label update
+					socket.on("label", function(data) {
+						console.log(data);
+						that.addLabel(data);
 					});
 				}
 			});

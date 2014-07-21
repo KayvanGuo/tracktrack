@@ -29,18 +29,20 @@ int GPS_ANCHOR_BUTTON = 10;
 int GPS_ANCHOR_LED = 11;
 
 // CONSTANTS
-int HDOP_THRESHOLD = 2000;
-float ANCHOR_RANGE = 4;
+int HDOP_THRESHOLD = 50;
+float ANCHOR_RANGE = 15; // meters
+int DISTANCE_FILTER = 1; // meters
 
 // INSTANCES
 TinyGPS gpsencoder;
 SoftwareSerial gps(GPS_TX, GPS_RX);
 boolean guardAnchor = false;
-struct trackdata lastValidPosition;
+struct trackdata lastValidPosition = {100000, 0.0, 0.0, -1, -1, -1, 0, 0, 0, 0, 0, 0};
 struct trackdata guardedPosition;
 
 TCP tcp;
 boolean gsmReady = false;
+boolean firstRun
 
 // SETUP
 void setup()
@@ -52,146 +54,159 @@ void setup()
     pinMode(GPS_ANCHOR_LED, OUTPUT);
 
     Serial.begin(9600);
-  
-    // establish serial connection to gps module
+
+    // init GPS serial connection
+    gps.begin(9600);
+
+    // establish serial connection to gsm module
     Serial.println("GSM Shield...");
+    if(gsm.begin(2400)) 
+    {
+        Serial.println("\nstatus=READY");
+        gsmReady = true;
+    }
+    else 
+    {
+        Serial.println("\nstatus=IDLE"); 
+    } 
+  
+    // GSM shield is ready
+    if(gsmReady)
+    {
+        // GPRS attach, put in order APN, username and password.
+        // If no needed auth let them blank.
+        if(tcp.attachGPRS("pinternet.interkom.de", "", ""))
+        {
+            Serial.println("status=ATTACHED");
+        }
+        else 
+        {
+            Serial.println("status=ERROR");
+        }
+    
+        delay(500);
+
+        // Read IP address.
+        gsm.SimpleWriteln("AT+CIFSR");
+        delay(500);
+    
+        gsm.WhileSimpleRead();
+    }
 };
 
 // LOOP
 void loop() 
 {
     Serial.println("Start loop");
-    gps.begin(9600);
-    delay(2000);
+    
+    gps.listen();
     struct trackdata d = getPosition();
-    gps.end();
 
     // position valid?
-    if (d.hdop >= 0 && d.hdop < HDOP_THRESHOLD)
+    if (validatePosition(d))
     {
-        if(gsm.begin(2400)) 
-        {
-            Serial.println("\nstatus=READY");
-            gsmReady = true;
-        }
-        else 
-        {
-            Serial.println("\nstatus=IDLE"); 
-        } 
-      
-        // GSM shield is ready
-        if(gsmReady)
-        {
-            // GPRS attach, put in order APN, username and password.
-            // If no needed auth let them blank.
-            if(tcp.attachGPRS("pinternet.interkom.de", "", ""))
-            {
-                Serial.println("status=ATTACHED");
-            }
-            else 
-            {
-                Serial.println("status=ERROR");
-            }
-        
-            delay(500);
-
-            // Read IP address.
-            gsm.SimpleWriteln("AT+CIFSR");
-            delay(1000);
-        
-            gsm.WhileSimpleRead();
-        }
-
         // check if anchor guard is active
         anchorGuard(d);
 
-        lastValidPosition = d;
-        printPosition(d);
+        // check distance filter
+        float distance = DISTANCE_FILTER * DISTANCE_FILTER;
+        if(validatePosition(lastValidPosition) == true) {
+            distance = gpsencoder.distance_between(lastValidPosition.lat, lastValidPosition.lon, d.lat, d.lon);
+        }
 
-        unsigned char pos[32];
-        pos[0] = 'M';
-        pos[1] = 'C';
-        pos[2] = 'G';
-        pos[3] = 'P';
+        // only move if the distance between the current and 
+        // the last position is
+        if(distance >= DISTANCE_FILTER)
+        {
+            lastValidPosition = d;
+            printPosition(d);
 
-        // hardware id
-        unsigned char hwidBuf[4];
-        int32ToBuffer(hwidBuf, d.hwid);
+            unsigned char pos[32];
+            pos[0] = 'M';
+            pos[1] = 'C';
+            pos[2] = 'G';
+            pos[3] = 'P';
 
-        pos[4]  = hwidBuf[0];
-        pos[5]  = hwidBuf[1];
-        pos[6]  = hwidBuf[2];
-        pos[7]  = hwidBuf[3];
+            // hardware id
+            unsigned char hwidBuf[4];
+            int32ToBuffer(hwidBuf, d.hwid);
 
-        // latitude
-        unsigned char latBuf[4];
-        floatToBuffer(latBuf, d.lat);
+            pos[4] = hwidBuf[0];
+            pos[5] = hwidBuf[1];
+            pos[6] = hwidBuf[2];
+            pos[7] = hwidBuf[3];
 
-        pos[8] = latBuf[0];
-        pos[9] = latBuf[1];
-        pos[10] = latBuf[2];
-        pos[11] = latBuf[3];
+            // latitude
+            unsigned char latBuf[4];
+            floatToBuffer(latBuf, d.lat);
 
-        // longitude
-        unsigned char lonBuf[4];
-        floatToBuffer(lonBuf, d.lon);
+            pos[8] = latBuf[0];
+            pos[9] = latBuf[1];
+            pos[10] = latBuf[2];
+            pos[11] = latBuf[3];
 
-        pos[12] = lonBuf[0];
-        pos[13] = lonBuf[1];
-        pos[14] = lonBuf[2];
-        pos[15] = lonBuf[3];
+            // longitude
+            unsigned char lonBuf[4];
+            floatToBuffer(lonBuf, d.lon);
 
-        // speed
-        unsigned char speedBuf[4];
-        floatToBuffer(speedBuf, d.speed);
+            pos[12] = lonBuf[0];
+            pos[13] = lonBuf[1];
+            pos[14] = lonBuf[2];
+            pos[15] = lonBuf[3];
 
-        pos[16] = speedBuf[0];
-        pos[17] = speedBuf[1];
-        pos[18] = speedBuf[2];
-        pos[19] = speedBuf[3];
+            // speed
+            unsigned char speedBuf[4];
+            floatToBuffer(speedBuf, d.speed);
 
-        // course
-        unsigned char courseBuf[2];
-        int16ToBuffer(courseBuf, d.course);
+            pos[16] = speedBuf[0];
+            pos[17] = speedBuf[1];
+            pos[18] = speedBuf[2];
+            pos[19] = speedBuf[3];
 
-        pos[20] = courseBuf[0];
-        pos[21] = courseBuf[1];
+            // course
+            unsigned char courseBuf[2];
+            int16ToBuffer(courseBuf, d.course);
 
-        // hdop
-        unsigned char hdopBuf[2];
-        int16ToBuffer(hdopBuf, d.hdop);
+            pos[20] = courseBuf[0];
+            pos[21] = courseBuf[1];
 
-        pos[22] = hdopBuf[0];
-        pos[23] = hdopBuf[1];
+            // hdop
+            unsigned char hdopBuf[2];
+            int16ToBuffer(hdopBuf, d.hdop);
 
-        // utc
-        pos[24] = d.seconds;
-        pos[25] = d.minutes;
-        pos[26] = d.hours;
-        pos[27] = d.day;
-        pos[28] = d.month;
+            pos[22] = hdopBuf[0];
+            pos[23] = hdopBuf[1];
 
-        unsigned char yearBuf[2];
-        int16ToBuffer(yearBuf, d.year);
-        pos[29] = yearBuf[0];
-        pos[30] = yearBuf[1];
+            // utc
+            pos[24] = d.seconds;
+            pos[25] = d.minutes;
+            pos[26] = d.hours;
+            pos[27] = d.day;
+            pos[28] = d.month;
 
-        pos[31] = 0;
+            unsigned char yearBuf[2];
+            int16ToBuffer(yearBuf, d.year);
+            pos[29] = yearBuf[0];
+            pos[30] = yearBuf[1];
 
-        Serial.println(pos[24]);
+            pos[31] = 0;
 
-        // send the position via tcp to server
-        tcp.connect("tracktrack.io", 8100);
-        tcp.send(pos, 32);
-        tcp.disconnect();
+            Serial.println(pos[24]);
 
-        //gsm.end();
+            gsm.listen();
+
+            // send the position via tcp to server
+            tcp.connect("tracktrack.io", 8100);
+            tcp.send(pos, 32);
+            tcp.disconnect();
+        }
+
         delay(1000);
     }
     else
     {
-        Serial.print("Bad HDOP: ");
-        Serial.println(d.hdop);
+        Serial.print("Bad Position: ");
+        printPosition(d);
     }
 };
 
@@ -273,9 +288,9 @@ struct trackdata getPosition()
   // get received speed in knots
   fspeed = gpsencoder.f_speed_knots();
   // get received course
-  icourse = (int16_t) gpsencoder.course()/100;
+  icourse = (int16_t) gpsencoder.course() / 100;
   // get received HDOP value
-  ihdop = gpsencoder.hdop();
+  ihdop = (int16_t) gpsencoder.hdop() / 100;
   
   struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear};
   return position;
@@ -300,6 +315,17 @@ void printPosition(struct trackdata position)
   Serial.print(sz);
   Serial.println();
 }  
+
+// VALIDATE POSITION
+boolean validatePosition(struct trackdata pos) 
+{
+    if(pos.lat > 0 && pos.lat <= 180 && pos.lon > 0 && pos.lon <= 180 && pos.hdop >= 0 && pos.speed >= 0 && pos.course >= 0 && pos.hdop <= HDOP_THRESHOLD)
+    {
+        return true;
+    }
+
+    return false;
+}
 
 // CRACK DATE AND TIME
 void crack_datetime(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int8_t *minute, int8_t *second, int8_t *hundredths, unsigned long *age)

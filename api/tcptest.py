@@ -8,7 +8,7 @@ def int_to_bytes(val, num_bytes):
 def msg():
 
 	# AAA
-	m = [0x65, 0x65, 0x65]
+	m = ['M', 'C', 'G', 'P']
 
 	# Boat ID
 	m += int_to_bytes(3, 4)
