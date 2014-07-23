@@ -32,7 +32,7 @@ int BAD_POSITION_LED = 13;
 // CONSTANTS
 int HDOP_THRESHOLD = 150;
 float ANCHOR_RANGE = 15; // meters
-int DISTANCE_FILTER = 1; // meters
+int DISTANCE_FILTER = 3; // meters
 
 // INSTANCES
 TinyGPS gpsencoder;

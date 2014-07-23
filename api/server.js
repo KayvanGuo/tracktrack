@@ -596,8 +596,8 @@ net.createServer(function(c) {
 
 										if(!err && lastPos.length == 1) {
 
-											var lastLocalTime = moment(lastPos[0]);
-											var currLocalTime = position.timestamp;
+											var lastLocalTime = moment.utc(lastPos[0]);
+											var currLocalTime = moment.utc(position.timestamp);
 											var tzOffsetHours = tzwhere.tzOffsetAt(lastPos[0]["latitude"], lastPos[0]["longitude"]);
 											
 											// add or subtract the offset to local time

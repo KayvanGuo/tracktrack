@@ -186,7 +186,7 @@
                 <th></th>
             </thead>
         <% for(var i in trips) { %>
-            <% if(trips[i].amount > 10) { %>
+            <% if(trips[i].amount >= 1) { %>
             <tr>
                 <td class="actions" data-id="<%= trips[i].id %>">
                     <a href="javascript:void(0);" class="text-danger deleteTrip" data-toggle="tooltip" data-placement="top" title="Törn löschen"><i class="fa fa-trash-o"></i></a>

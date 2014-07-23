@@ -141,6 +141,7 @@ $(function() {
 
 			// load the trips for this boat
 			$.getJSON("/api" + $(e.target).attr("href").replace("#", ""), function(data) {
+				
 				var t = _.template($("#tripContentTpl").html(), {
 					trips: data
 				});
