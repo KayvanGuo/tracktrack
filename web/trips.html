@@ -212,9 +212,11 @@
                 <td><%= trips[i].amount %></td>
                 <td>
                     <% if(trips[i].type == 1) { %>
-                        automatisch
+                        Auslaufen
+                    <% } else if(trips[i].type == 0) { %>
+                        Tageswechsel
                     <% } else { %>
-                        manuell
+                        Manuell
                     <% } %>
                 </td>
                 <td class="actions" data-id="<%= trips[i].id %>" data-key="<%= trips[i].key %>" >

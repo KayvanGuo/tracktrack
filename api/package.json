@@ -11,6 +11,7 @@
 		"socket.io"		: "latest",
 		"shortid"		: "latest",
 		"passport"		: "latest",
-		"passport-http"	: "latest"
+		"passport-http"	: "latest",
+		"tzwhere"		: "latest"
 	}
 }

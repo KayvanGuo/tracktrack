@@ -13,6 +13,7 @@ var BasicStrategy 	= require("passport-http").BasicStrategy;
 var bcrypt  		= require("bcrypt");
 var bodyParser 		= require("body-parser");
 var geohash			= require("ngeohash");
+var tzwhere 		= require("tzwhere");
 
 /*
  _    _ _______ _______ _____     _____ ______ _______      ________ _____  
@@ -22,6 +23,8 @@ var geohash			= require("ngeohash");
 | |  | |  | |     | |  | |       ____) | |____| | \ \  \  /  | |____| | \ \ 
 |_|  |_|  |_|     |_|  |_|      |_____/|______|_|  \_\  \/   |______|_|  \_\
 */
+
+tzwhere.init();
 
 // MySQL connection pool
 var pool  = mysql.createPool({
@@ -526,6 +529,27 @@ net.createServer(function(c) {
 			// loop all keys of boat positions
 			for(var key in boatPositions) {
 
+				// FN: analyses the trip and stores its results
+				var tripAnalysis = function(rows, c) {
+
+					c.query("SELECT latitude, longitude, speed FROM positions WHERE trip = " + rows[0].currentTrip + " ORDER BY timestamp", function(err, positions) {
+
+						// store the distance of the trip
+						var dist = 0.0;
+						var vmax = 0.0;
+						for(var i = 0; i < positions.length - 1; i++) {
+							dist += geolib.getDistance(positions[i], positions[i + 1]);
+							if(positions[i].speed > vmax) vmax = positions[i].speed;
+						}
+
+						// meters to nautical miles
+						dist = dist * 0.000539956803;
+
+						c.query("UPDATE trips SET distance = " + dist + " WHERE id = " + rows[0].currentTrip);
+						c.query("UPDATE trips SET vmax = " + vmax + " WHERE id = " + rows[0].currentTrip);
+					});
+				};
+
 				// fn: find a trip out of this position
 				var findTrip = function(rows, c, position, next) {
 
@@ -535,9 +559,102 @@ net.createServer(function(c) {
 						// decide by triptype to check what to do
 						switch(rows[0].tripType) {
 
-							// manuel
+							// every day a new trip
 							case 0: 
-								return next(null);
+
+								// not tour yet, so there definitly has to be one created
+								if(rows[0].currentTrip == null) {
+
+									var newTrip = {
+										"key": shortid.generate(),
+										"boat": position.boat,
+										"type": 0,
+										"start": position.timestamp,
+										"finish": null
+									};
+
+									// ... create new trip
+									c.query("INSERT INTO trips SET ?", newTrip, function(err, tripResult) {
+
+										if(err) {
+											console.log(err);
+											return next(null);
+										}
+
+										var newTripId = tripResult.insertId;
+										c.query("UPDATE boats SET currentTrip = " + newTripId + " WHERE id = " + position.boat);
+										return next(newTripId);
+									});
+								}
+
+								// there is a tour yet, should it be closed and  
+								// a new one, for a new day beeing started
+								else {
+
+									// find last boat position
+									c.query("SELECT latitude, longitude, timestamp FROM boats AS b JOIN positions AS p ON p.id = b.lastPosition WHERE b.id = " + position.boat, function(err, lastPos) {
+
+										if(!err && lastPos.length == 1) {
+
+											var lastLocalTime = moment(lastPos[0]);
+											var currLocalTime = position.timestamp;
+											var tzOffsetHours = tzwhere.tzOffsetAt(lastPos[0]["latitude"], lastPos[0]["longitude"]);
+											
+											// add or subtract the offset to local time
+											if(tzOffsetHours > 0) {
+
+												lastLocalTime = lastLocalTime.add("ms", tzOffsetHours);
+												currLocalTime = currLocalTime.add("ms", tzOffsetHours);
+											}
+											else if(tzOffsetHours < 0) {	
+
+												lastLocalTime = lastLocalTime.subtract("ms", tzOffsetHours);
+												currLocalTime = currLocalTime.subtract("ms", tzOffsetHours);
+											}
+
+											// check if a new day started, or the last position is longer then 24 hours old ...
+											if (lastLocalTime.date() != currLocalTime.date() || 
+												Math.abs(lastLocalTime.diff(currLocalTime)) / 1000 > 86400) {
+
+												// store analysis on the old tour
+												tripAnalysis(rows, c);
+
+												var newTrip = {
+													"key": shortid.generate(),
+													"boat": position.boat,
+													"type": 0,
+													"start": position.timestamp,
+													"finish": null
+												};
+
+												// ... create new trip
+												c.query("INSERT INTO trips SET ?", newTrip, function(err, tripResult) {
+
+													if(err) {
+														console.log(err);
+														return next(null);
+													}
+
+													var newTripId = tripResult.insertId;
+													c.query("UPDATE trips SET finish = '" + position.timestamp + "' WHERE id = " + rows[0].currentTrip);
+													c.query("UPDATE boats SET currentTrip = " + newTripId + " WHERE id = " + position.boat);
+													return next(newTripId);
+												});
+											}
+
+											// no new day started
+											else {
+												return next(rows[0].currentTrip);
+											}
+										}
+										else {
+
+											console.log(err);
+											return next(null);
+										}
+									});
+								}
+
 								break;
 
 							// leaving mooring
@@ -584,23 +701,8 @@ net.createServer(function(c) {
 									// ... and there is currently a trip going on, ...
 									if(rows[0].currentTrip != null) {
 
-										// find last position of trip
-										c.query("SELECT latitude, longitude, speed FROM positions WHERE trip = " + rows[0].currentTrip + " ORDER BY timestamp", function(err, positions) {
-
-											// store the distance of the trip
-											var dist = 0.0;
-											var vmax = 0.0;
-											for(var i = 0; i < positions.length - 1; i++) {
-												dist += geolib.getDistance(positions[i], positions[i + 1]);
-												if(positions[i].speed > vmax) vmax = positions[i].speed;
-											}
-
-											// meters to nautical miles
-											dist = dist * 0.000539956803;
-
-											c.query("UPDATE trips SET distance = " + dist + " WHERE id = " + rows[0].currentTrip);
-											c.query("UPDATE trips SET vmax = " + vmax + " WHERE id = " + rows[0].currentTrip);
-										});
+										// do some calculations on the trip
+										tripAnalysis(rows, c);
 
 										// ... stop it
 										c.query("UPDATE boats SET currentTrip = NULL WHERE id = " + position.boat);
@@ -612,7 +714,7 @@ net.createServer(function(c) {
 
 								break;
 
-							// timebased
+							// manually
 							case 2: 
 								return next(null);
 								break;

@@ -28,6 +28,8 @@ $(function() {
 			$.getJSON("/api/trip/" + key, function(trip) {
 				that.trip = trip;
 
+				document.title = document.title.replace("Törn", trip.name);
+
 				if(that.trip.id) {
 					that.$el.empty();
 					that.render();
