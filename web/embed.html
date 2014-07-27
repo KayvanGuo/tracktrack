@@ -27,17 +27,25 @@
                 <td style="border-top:0px!important;"><%= moment(position.timestamp).format("DD.MM.YYYY HH:mm:ss") %></td>
             </tr>
             <tr>
+                <th>Status</th>
+                <td>
+                    <% if(position.anchored == 1) { %>
+                        vor Anker
+                    <% } else if(position.speed > 0.8) { %>
+                        in Fahrt
+                    <% } else { %>
+                        ohne Fahrt
+                    <% } %>
+                </td>
+            </tr>
+            <tr>
                 <th>Latitude</th>
-                <td><%= position.latitude %></td>
+                <td><%= decToCoord(position.latitude) %> N</td>
             </tr>
 
             <tr>
                 <th>Longitude</th>
-                <td><%= position.longitude %></td>
-            </tr>
-            <tr>
-                <th>Geschwindigkeit</th>
-                <td><%= position.speed.toFixed(1) %> ktn</td>
+                <td><%= decToCoord(position.longitude) %> E</td>
             </tr>
             <tr>
                 <th>Kurs</th>

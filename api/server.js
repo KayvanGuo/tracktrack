@@ -113,6 +113,23 @@ app.get("/embed/:key/", function(req, res) {
 	});
 });
 
+// EMBED LATEST
+app.get("/embed/latest/:boat", function(req, res) {
+
+	pool.getConnection(function(err, c) {
+		if (err) throw err;
+
+		c.query("SELECT t.key FROM boats AS b JOIN trips AS t ON t.id = b.currentTrip WHERE b.id = ?", [req.params.boat], function(err, boats) {
+
+			if(err || boats.length != 1) {
+				return res.redirect("/");
+			}
+
+			return res.redirect("/embed/" + boats[0]["key"] + "/?f=" + req.query.f + "&a=" + req.query.a + "&l=" + req.query.l);
+		});
+	})
+});
+
 // GET /BOATS
 app.get("/api/boats/:owner", passport.authenticate("basic", { session: false }), function(req, res) {
 
@@ -204,7 +221,7 @@ app.get("/api/positions/:trip", function(req, res) {
 
 				if(err) throw err;
 
-				c.query("SELECT latitude, longitude, speed, course, timestamp FROM positions WHERE trip = " + pool.escape(req.params.trip) + " ORDER BY timestamp", function(err, rows) {
+				c.query("SELECT latitude, longitude, speed, course, timestamp, anchored FROM positions WHERE trip = " + pool.escape(req.params.trip) + " ORDER BY timestamp", function(err, rows) {
 					if(err) throw err;
 			    	c.release();
 
@@ -512,7 +529,8 @@ net.createServer(function(c) {
 						"course": working.readInt16LE(20),
 						"hdop": working.readInt16LE(22),
 						"timestamp": dateString,
-						"geohash": geohash.encode(working.readFloatLE(8), working.readFloatLE(12), 10)
+						"geohash": geohash.encode(working.readFloatLE(8), working.readFloatLE(12), 10),
+						"anchored": (working.readInt8(31) == 1)
 					};
 
 					// add new array to positions dict
@@ -592,29 +610,29 @@ net.createServer(function(c) {
 								else {
 
 									// find last boat position
-									c.query("SELECT latitude, longitude, timestamp FROM boats AS b JOIN positions AS p ON p.id = b.lastPosition WHERE b.id = " + position.boat, function(err, lastPos) {
+									c.query("SELECT start FROM trips WHERE id = " + rows[0].currentTrip, function(err, lastTrip) {
 
-										if(!err && lastPos.length == 1) {
+										if(!err && lastTrip.length == 1) {
 
-											var lastLocalTime = moment.utc(lastPos[0]);
+											var startTripLocalTime = moment.utc(lastTrip[0].start);
 											var currLocalTime = moment.utc(position.timestamp);
-											var tzOffsetHours = tzwhere.tzOffsetAt(lastPos[0]["latitude"], lastPos[0]["longitude"]);
+											var tzOffsetHours = tzwhere.tzOffsetAt(position["latitude"], position["longitude"]);
+											//console.log("offset hours", tzOffsetHours);
 											
 											// add or subtract the offset to local time
 											if(tzOffsetHours > 0) {
 
-												lastLocalTime = lastLocalTime.add("ms", tzOffsetHours);
+												startTripLocalTime = startTripLocalTime.add("ms", tzOffsetHours);
 												currLocalTime = currLocalTime.add("ms", tzOffsetHours);
 											}
 											else if(tzOffsetHours < 0) {	
 
-												lastLocalTime = lastLocalTime.subtract("ms", tzOffsetHours);
+												startTripLocalTime = startTripLocalTime.subtract("ms", tzOffsetHours);
 												currLocalTime = currLocalTime.subtract("ms", tzOffsetHours);
 											}
 
 											// check if a new day started, or the last position is longer then 24 hours old ...
-											if (lastLocalTime.date() != currLocalTime.date() || 
-												Math.abs(lastLocalTime.diff(currLocalTime)) / 1000 > 86400) {
+											if (startTripLocalTime.dayOfYear() != currLocalTime.dayOfYear()) {
 
 												// store analysis on the old tour
 												tripAnalysis(rows, c);

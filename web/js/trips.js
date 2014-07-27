@@ -164,6 +164,7 @@ $(function() {
 			}
 			else {
 				$.getJSON("/api/positions/" + $e.data("id"), function(p) {
+					console.table(p.positions);
 					window.mapView.addBoatPath($e.data("id"), p);
 					$("html, body").animate({ scrollTop: 0}, "fast");
 					$(".showTrip").text("anzeigen");

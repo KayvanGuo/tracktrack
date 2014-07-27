@@ -163,3 +163,31 @@ $(function() {
 		location.href = "/";
 	});
 });
+
+function decToCoord (deg) {
+   var d = Math.floor (deg);
+   var minfloat = (deg-d)*60;
+   var m = Math.floor(minfloat);
+   var secfloat = (minfloat-m)*60;
+   var s = Math.round(secfloat);
+   // After rounding, the seconds might become 60. These two
+   // if-tests are not necessary if no rounding is done.
+   if (s==60) {
+     m++;
+     s=0;
+   }
+   if (m==60) {
+     d++;
+     m=0;
+   }
+   return d + "° " + m + "' " + secfloat.toFixed(1) + "\"";
+}
+
+
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-53219959-1', 'auto');
+ga('send', 'pageview');

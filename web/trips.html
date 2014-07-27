@@ -184,6 +184,7 @@
                 <th>Positionen</th>
                 <th>Auslöser</th>
                 <th></th>
+                <th></th>
             </thead>
         <% for(var i in trips) { %>
             <% if(trips[i].amount >= 1) { %>
@@ -221,6 +222,8 @@
                 </td>
                 <td class="actions" data-id="<%= trips[i].id %>" data-key="<%= trips[i].key %>" >
                     <a href="javascript:void(0);" class="showTrip" data-toggle="tooltip" data-placement="top" title="auf Karte anzeigen">anzeigen</a>
+                </td>
+                <td class="actions" data-id="<%= trips[i].id %>" data-key="<%= trips[i].key %>" >
                     <a href="javascript:void(0);" class="shareTrip" data-toggle="tooltip" data-placement="top" title="teilen"><i class="fa fa-send"></i></a>
                     <a href="javascript:void(0);" class="embedTrip" data-toggle="tooltip" data-placement="top" title="auf Website einbinden"><i class="fa fa-code"></i></a>
                 </td>
@@ -237,13 +240,25 @@
                 <td style="border-top:0px!important;"><%= moment(position.timestamp).format("DD.MM.YYYY HH:mm:ss") %></td>
             </tr>
             <tr>
+                <th>Status</th>
+                <td>
+                    <% if(position.anchored == 1) { %>
+                        vor Anker
+                    <% } else if(position.speed > 0.8) { %>
+                        in Fahrt
+                    <% } else { %>
+                        ohne Fahrt
+                    <% } %>
+                </td>
+            </tr>
+            <tr>
                 <th>Latitude</th>
-                <td><%= position.latitude %></td>
+                <td><%= decToCoord(position.latitude) %> N</td>
             </tr>
 
             <tr>
                 <th>Longitude</th>
-                <td><%= position.longitude %></td>
+                <td><%= decToCoord(position.longitude) %> E</td>
             </tr>
             <tr>
                 <th>HDOP</th>

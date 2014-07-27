@@ -26,12 +26,11 @@ int GPS_TX = 7;
 int GPS_RX = 8;
 int GPS_SPEAKER = 9;
 int GPS_ANCHOR_BUTTON = 10;
-int GPS_ANCHOR_LED = 11;
-int BAD_POSITION_LED = 13;
+int BAD_POSITION_LED = 12;
 
 // CONSTANTS
 int HDOP_THRESHOLD = 150;
-float ANCHOR_RANGE = 15; // meters
+float ANCHOR_RANGE = 20; // meters
 int DISTANCE_FILTER = 3; // meters
 
 // INSTANCES
@@ -51,7 +50,7 @@ void setup()
     pinMode(GPS_SPEAKER, OUTPUT);
     pinMode(GPS_ANCHOR_BUTTON, INPUT);
     digitalWrite(GPS_ANCHOR_BUTTON, HIGH);
-    pinMode(GPS_ANCHOR_LED, OUTPUT);
+    digitalWrite(GPS_SPEAKER, LOW);
     pinMode(BAD_POSITION_LED, OUTPUT);
 
     lastValidPosition.hwid = 100000;
@@ -60,6 +59,9 @@ void setup()
     lastValidPosition.course = -1;
     lastValidPosition.hdop = -1;
     lastValidPosition.speed = -1;
+
+    guardedPosition.lat = 0.0;
+    guardedPosition.lon = 0.0;
 
     Serial.begin(9600);
   
@@ -83,7 +85,7 @@ void setup()
     {
         // GPRS attach, put in order APN, username and password.
         // If no needed auth let them blank.
-        if(tcp.attachGPRS("pinternet.interkom.de", "", ""))
+        if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
         {
             Serial.println("status=ATTACHED");
         }
@@ -115,14 +117,14 @@ void loop()
         anchorGuard(d);
 
         // check distance filter
-        float distance = DISTANCE_FILTER * DISTANCE_FILTER;
+        float distance = 50;
         if(validatePosition(lastValidPosition) == true) {
             distance = gpsencoder.distance_between(lastValidPosition.lat, lastValidPosition.lon, d.lat, d.lon);
         }
 
         // only move if the distance between the current and 
         // the last position is
-        if(distance >= DISTANCE_FILTER)
+        if(distance >= DISTANCE_FILTER && distance <= 150000)
         {
             digitalWrite(BAD_POSITION_LED, LOW);
 
@@ -200,9 +202,12 @@ void loop()
             pos[29] = yearBuf[0];
             pos[30] = yearBuf[1];
 
-            pos[31] = 0;
-
-            Serial.println(pos[24]);
+            if(guardAnchor == true) {
+            	pos[31] = 1;
+            }
+            else {
+            	pos[31] = 0;
+            }
 
             gsm.listen();
 
@@ -212,7 +217,6 @@ void loop()
             tcp.disconnect();
         }
 
-        //gsm.end();
         delay(1000);
     }
     else
@@ -258,26 +262,16 @@ boolean validatePosition(struct trackdata pos)
 
 void anchorGuard(struct trackdata position)
 {
-    boolean buttonPressed = (digitalRead(GPS_ANCHOR_BUTTON) == LOW);
-    if (buttonPressed)
-    {
-        if (guardAnchor)
-        {
-            guardAnchor = false;
-            digitalWrite(GPS_ANCHOR_LED,LOW);
-            digitalWrite(GPS_SPEAKER, LOW);
-            Serial.println("Anchor Guard deactivated.");
-        }
-        else
-        {
-            guardAnchor = true;
-            guardedPosition = position;
-            digitalWrite(GPS_ANCHOR_LED,HIGH);      
-            Serial.println("Anchor Guard activated.");    
-        }
-    }
+    guardAnchor = (digitalRead(GPS_ANCHOR_BUTTON) == HIGH);
+
     if (guardAnchor)
     {
+    	// init guarded position
+    	if(guardedPosition.lat == 0.0 && guardedPosition.lon == 0.0) 
+    	{
+    		guardedPosition = position;
+    	}
+
         float distance = gpsencoder.distance_between(guardedPosition.lat, guardedPosition.lon, position.lat, position.lon);
         if (distance > ANCHOR_RANGE)
         {
@@ -292,6 +286,11 @@ void anchorGuard(struct trackdata position)
             Serial.print("Distance from guarded anchor position: ");
             Serial.println(distance);   
         }
+    }
+    else {
+    	guardedPosition.lat = 0.0;
+    	guardedPosition.lon = 0.0;
+    	digitalWrite(GPS_SPEAKER, LOW);
     }
 }
 
