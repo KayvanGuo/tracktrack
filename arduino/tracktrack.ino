@@ -42,6 +42,7 @@ struct trackdata guardedPosition;
 
 TCP tcp;
 boolean gsmReady = false;
+boolean debug = false;
 
 // SETUP
 void setup()
@@ -69,15 +70,15 @@ void setup()
     gps.begin(9600);
 
     // establish serial connection to gsm module
-    Serial.println("GSM Shield...");
+    if(debug) Serial.println("GSM Shield...");
     if(gsm.begin(2400)) 
     {
-        Serial.println("\nstatus=READY");
+        if(debug) Serial.println("\nstatus=READY");
         gsmReady = true;
     }
     else 
     {
-        Serial.println("\nstatus=IDLE"); 
+        if(debug) Serial.println("\nstatus=IDLE"); 
     } 
   
     // GSM shield is ready
@@ -87,11 +88,11 @@ void setup()
         // If no needed auth let them blank.
         if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
         {
-            Serial.println("status=ATTACHED");
+            if(debug) Serial.println("status=ATTACHED");
         }
         else 
         {
-            Serial.println("status=ERROR");
+            if(debug) Serial.println("status=ERROR");
         }
     
         delay(500);
@@ -132,7 +133,7 @@ void loop()
             anchorGuard(d);
 
             lastValidPosition = d;
-            printPosition(d);
+            if(debug) printPosition(d);
 
             unsigned char pos[32];
             pos[0] = 'M';
@@ -221,9 +222,9 @@ void loop()
     }
     else
     {
-        Serial.print("Bad Position: ");
+        if(debug) Serial.print("Bad Position: ");
         digitalWrite(BAD_POSITION_LED, HIGH);
-        printPosition(d);
+        if(debug) printPosition(d);
     }
 };
 
@@ -283,8 +284,8 @@ void anchorGuard(struct trackdata position)
         else
         {
             digitalWrite(GPS_SPEAKER, LOW);
-            Serial.print("Distance from guarded anchor position: ");
-            Serial.println(distance);   
+            if(debug) Serial.print("Distance from guarded anchor position: ");
+            if(debug) Serial.println(distance);   
         }
     }
     else {

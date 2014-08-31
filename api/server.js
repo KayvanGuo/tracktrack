@@ -30,8 +30,8 @@ tzwhere.init();
 var pool  = mysql.createPool({
 	connectionLimit : 100,
 	host     		: "localhost",
-	user     		: "root",
-	password 		: "InMe1337",
+	user     		: "tracktrack",
+	password 		: "50933koeln",
 	database 		: "boattracker",
 	timezone 		: "Z"
 });
@@ -75,7 +75,7 @@ console.log("Listening on port 8897. Ready to serve...");
 // Serve a static html file with gzip compression
 function serveHtml(res, file, next) {
 	// read index.html
-  	fs.readFile("/var/www/boattrack/web/" + file, function (err, html) {
+  	fs.readFile("/var/www/boattrack/" + file, function (err, html) {
 		zlib.gzip(html, function(err, result) {
 			
 			res.set("Content-Type", "text/html");
@@ -87,9 +87,10 @@ function serveHtml(res, file, next) {
 }
 
 // HOME
-app.get("/", function(req, res) { serveHtml(res, "login.html", function(html) { return res.send(html); }); });
-app.get("/trips", function(req, res) { serveHtml(res, "trips.html", function(html) { return res.send(html); }); });
-app.get("/dashboard", function(req, res) { serveHtml(res, "dashboard.html", function(html) { return res.send(html); }); });
+app.get("/", function(req, res) { serveHtml(res, "web/login.html", function(html) { return res.send(html); }); });
+app.get("/trips", function(req, res) { serveHtml(res, "web/trips.html", function(html) { return res.send(html); }); });
+app.get("/dashboard", function(req, res) { serveHtml(res, "web/dashboard.html", function(html) { return res.send(html); }); });
+app.get("/time", function(req, res) { serveHtml(res, "time/index.html", function(html) { return res.send(html); }); });
 
 // LOGIN
 app.post("/login", function(req, res) {
@@ -763,6 +764,7 @@ net.createServer(function(c) {
 
 								// insert new position
 								position["trip"] = trip;
+								//console.log(position);
 								c.query("INSERT INTO positions SET ?", position, function(err, result) {
 
 									// set the pointer to the last known position 

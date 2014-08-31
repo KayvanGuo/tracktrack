@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Time tracking app based on dropbox datastore.">
+    <meta name="author" content="Thomas Brüggemann">
+
+    <title>TrackTrack TIME</title>
+
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/select2/3.5.0/select2.min.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/select2/3.5.0/select2-bootstrap.min.css">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/3.0.0/css/bootstrap-datetimepicker.min.css">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .navbar {
+            margin-bottom: 20px;
+        }
+
+        .loader {
+            width:60px;
+            height:90px;
+            position:absolute;
+            left:50%;
+            top:50%;
+            font-size:60px;
+            color:lightgrey;
+            margin-left:-40px;
+            margin-top:-45px;
+        }
+
+        .datepick {
+            width:100px;
+            height:34px;
+        }
+
+        #storage_warning {
+            display:none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- http://vitalets.github.io/x-editable/demo-bs3.html -->
+    <div class="container">
+
+        <div class="navbar navbar-default" role="navigation" id="navi">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">TrackTrack <b>TIME</b></a>
+                </div>
+
+                <div class="collapse navbar-collapse navbar-right">
+                    <ul class="nav navbar-nav" id="navbar_right">
+                        <li><a href="#" id="csv_export"><i class="fa fa-cloud-download"></i> CSV-Export</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="main">
+            <center style="margin-top:100px;">
+                <button id="loginBtn" class="btn btn-primary btn-lg"><i class="fa fa-dropbox"></i> Login mit Dropbox</button>
+            </center>
+        </div>
+
+    </div> 
+
+    <script type="text/template" id="rowTpl">
+        <% for(var i in records) { %>
+
+            <% var hours = moment(records[i].get("stop")).diff(moment(records[i].get("start")), "minutes") / 60; %>
+
+            <% if(records[i].get("status") == "bezahlt") { %>
+                <tr class="editable-row success" data-rid="<%= records[i].getId() %>">
+            <% } else if(records[i].get("status") == "abgerechnet") { %>
+                <tr class="editable-row" data-rid="<%= records[i].getId() %>">
+            <% } else { %>
+                <tr class="editable-row" data-rid="<%= records[i].getId() %>">
+            <% } %>
+
+                <td><%= records[i].get("status") %></td>
+                <td><%= moment(records[i].get("start")).format("DD.MM.YY HH:mm") %></td>
+                <td><%= moment(records[i].get("stop")).format("DD.MM.YY HH:mm") %></td>
+                <td align="center"><span class="hours"><%= hours %></span></td>
+                <td>
+                    <% for(var c = 0; c < records[i].get("customer").length(); c++) { %>
+                        <%= records[i].get("customer").get(c) %>
+                        <% if(records[i].get("customer").length() > 1 && c < records[i].get("customer").length() - 1) { %>
+                            ,&nbsp;
+                        <% } %>
+                    <% } %>
+                </td>
+                <td>
+                    <% for(var p = 0; p < records[i].get("project").length(); p++) { %>
+                        <%= records[i].get("project").get(p) %>
+                        <% if(records[i].get("project").length() > 1 && p < records[i].get("project").length() - 1) { %>
+                            ,&nbsp;
+                        <% } %>
+                    <% } %>
+                </td>
+                <td><%= records[i].get("comment") %></td>
+                <td>
+                    <button data-rid="<%= records[i].getId() %>" class="btn btn-danger delete-record"><i class="fa fa-trash"></i></button>
+                </td>
+            </tr>
+
+        <% } %>
+    </script>
+
+    <script type="text/template" id="listeTpl">
+
+        <div class="row">
+
+            <div class="col-md-12">
+                <div class="alert alert-warning" id="storage_warning" role="alert">
+                    <b>Speicherplatz voll!</b> Dropbox Datastore erlaubt nur 100.000 Einträge. Du musst etwas löschen!
+                </div>
+
+                <div style="color:lightgrey;margin-bottom:10px" class="pull-right">(Doppelklicken zum Editieren einer Zeile)</div>
+
+                <table id="table" class="table table-striped table-bordered table-responsive table-condensed table-hover">
+                    <thead>
+                        <th>
+                            Status 
+                            <a href="javascript:void(0);" class="pull-right filtering" data-filter="status">
+                                <i class="fa fa-filter"></i>
+                            </a>
+                        </th>
+                        <th>
+                            Von 
+                            <a href="javascript:void(0);" class="pull-right filtering" data-filter="start">
+                                <i class="fa fa-filter"></i>
+                            </a>
+                        </th>
+                        <th>
+                            Bis 
+                            <a href="javascript:void(0);" class="pull-right filtering" data-filter="stop">
+                                <i class="fa fa-filter"></i>
+                            </a>
+                        </th>
+                        <th>Stunden</th>
+                        <th>
+                            Kunde 
+                            <a href="javascript:void(0);" class="pull-right filtering" data-filter="customer">
+                                <i class="fa fa-filter"></i>
+                            </a>
+                        </th>
+                        <th>
+                            Projekt 
+                            <a href="javascript:void(0);" class="pull-right filtering" data-filter="start">
+                                <i class="fa fa-filter"></i>
+                            </a>
+                        </th>
+                        <th>Kommentar</th>
+                        <th></th>
+                    </thead>
+                    <tr id="new_row">
+                        <td>
+                            <select class="drp-select" id="new_status" style="width:110px; margin-top:4px">
+                                <option></option>
+                                <option>abgerechnet</option>
+                                <option>bezahlt</option>
+                            </select>
+                        </td>
+                        <td><input type="text" id="new_start" class="datepick" data-date-format="DD.MM.YY HH:mm" /></td>
+                        <td><input type="text" id="new_stop" class="datepick" data-date-format="DD.MM.YY HH:mm" /></td>
+                        <td><span class="hours"></span></td>
+                        <td><input type="hidden" class="tag-select" id="new_customer" style="width:150px" /></td>
+                        <td><input type="hidden" class="tag-select" id="new_project" style="width:150px" /></td>
+                        <td><input type="text" style="width:100%; height:34px" id="new_comment" /></td>
+                        <td>
+                            <button id="save_new" class="btn btn-success"><i class="fa fa-plus"></i></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="3"><span class="pull-right"><b>Insgesamt:</b></span></td>
+                        <td align="center"><b id="sum"><%= sum.toFixed(2) %></b></td>
+                        <td colspan="4"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </script>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="//www.dropbox.com/static/api/dropbox-datastores-1.1-latest.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/select2/3.5.0/select2.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.7.0/moment-with-langs.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/3.0.0/js/bootstrap-datetimepicker.min.js"></script>
+
+    <script>
+
+        $(function() {
+
+            // NAVI VIEW
+            var NaviView = Backbone.View.extend({
+                el: "#navi",
+
+                events: {
+                    "click #csv_export": "csv_export"
+                },
+
+                // INITIALIZE
+                initialize: function() {
+                    this.hide_navi();
+                },
+
+                // SHOW NAVI
+                show_navi: function(time) {
+                    if(time) {
+                        $("#navbar_right").fadeIn(time);
+                    }
+                    else {
+                        $("#navbar_right").show();  
+                    }
+                },
+
+                // HIDE NAVI
+                hide_navi: function() {
+
+                    $("#navbar_right").hide();
+                },
+
+                // CSV EXPORT
+                csv_export: function() {
+                    
+                    // check if there are records
+                    var records = window.tableView.records;
+                    if(records) {
+
+                        var csvContent = [
+                            ["Start", "Stop", "Stunden", "Kunde", "Projekt", "Kommentar", "Status"]
+                        ];
+
+                        // loop all current records
+                        for(var i in records) {
+
+                            var customer = "";
+                            var projects = "";
+
+                            // prepare projects
+                            for(var p = 0; p < records[i].get("project").length(); p++) {
+                                projects += records[i].get("project").get(p);
+                                if(records[i].get("project").length() > 1 && p < records[i].get("project").length() - 1) {
+                                    projects += ", ";
+                                }
+                            }
+
+                            // prepare customer
+                            for(var c = 0; c < records[i].get("customer").length(); c++) {
+                                customer += records[i].get("customer").get(c);
+                                if(records[i].get("customer").length() > 1 && c < records[i].get("customer").length() - 1) {
+                                    customer += ", ";
+                                }
+                            }
+
+                            csvContent.push([
+                                records[i].get("start"),
+                                records[i].get("stop"),
+                                moment(records[i].get("stop")).diff(moment(records[i].get("start")), "minutes") / 60,
+                                customer,
+                                projects,
+                                records[i].get("comment"),
+                                records[i].get("status")
+                            ]);
+                        }
+
+                        // fire hacked download link
+                        var pom = document.createElement("a");
+                        var blob = new Blob(csvContent, {type: "text/csv;charset=utf-8;"});
+                        var url = URL.createObjectURL(blob);
+                        pom.href = url;
+                        pom.setAttribute("download", "zeitliste.csv");
+                        pom.click();
+                    }
+                }
+            });
+
+            // TABLE VIEW
+            var TableView = Backbone.View.extend({
+                el: "#main",
+                timeTable: null,
+                records: null,
+                customers: [],
+                projects: [],
+
+                events: {
+                    "click #save_new"       : "save_new",
+                    "click .delete-record"  : "delete_record",
+                    "dblclick .editable-row": "start_row_editing",
+                    "change .datepick"      : "calc_hours",
+                    "click .filtering"      : "open_filter"
+                },
+
+                // INITIALIZE
+                initialize: function() {
+                    this.timeTable = window.datastore.getTable("times");
+                    this.render();
+                },
+
+                // RENDER
+                render: function() {
+                    this.$el.hide();
+                    this.records = this.timeTable.query();
+
+                    var sum = 0.0;
+                    for(var i in this.records) {
+
+                        // calculate total hours
+                        var hours = moment(this.records[i].get("stop")).diff(moment(this.records[i].get("start")), "minutes") / 60;
+                        sum += hours;
+                        
+                        // find unique customers
+                        for(var c = 0; c < this.records[i].get("customer").length(); c++) {
+                            var customer = this.records[i].get("customer").get(c);
+
+                            if(this.customers.indexOf(customer) == -1) {
+                                this.customers.push(customer);
+                            }
+                        }
+
+                        // find unique projects
+                        for(var p = 0; p < this.records[i].get("project").length(); p++) {
+                            var project = this.records[i].get("project").get(p);
+
+                            if(this.projects.indexOf(project) == -1) {
+                                this.projects.push(project);
+                            }
+                        }
+                    }   
+
+                    var t = _.template($("#listeTpl").html(), {
+                        "sum": sum
+                    });
+                    this.$el.html(t);
+
+                    // insert rows
+                    var rt = _.template($("#rowTpl").html(), {
+                        "records": this.records
+                    });
+
+                    this.$el.find("#new_row").before(rt);
+
+                    this.$el.fadeIn(1000);
+                    window.naviView.show_navi(1000);
+
+                    // UI plugins
+                    $(".drp-select").select2({
+                        allowClear: true
+                    });
+
+                    var new_customer = ["keiner"];
+                    new_customer = this.customers;
+                    $("#new_customer").select2({
+                        tags: new_customer,
+                        tokenSeparators: [","]
+                    });
+
+                    var new_project = ["keins"];
+                    new_project = this.projects;
+                    $("#new_project").select2({
+                        tags: new_project,
+                        tokenSeparators: [","]
+                    });
+
+                    $(".datepick").datetimepicker({
+                        language: "de",
+                        minuteStepping: 15
+                    });
+                },
+
+                // SAVE
+                save_new: function() {
+                    var t = {
+                        "start": $("#new_start").data("DateTimePicker").getDate().toDate(),
+                        "stop": $("#new_stop").data("DateTimePicker").getDate().toDate(),
+                        "customer": $("#new_customer").select2("val"),
+                        "project": $("#new_project").select2("val"),
+                        "comment": $("#new_comment").val(),
+                        "status": $("#new_status").select2("val")
+                    };
+
+                    var newItem = this.timeTable.insert(t);
+
+                    var rt = _.template($("#rowTpl").html(), {
+                        "records": [newItem]
+                    });
+
+                    this.$el.find("#new_row").before(rt);
+
+                    // reset forms
+                    $("#new_customer").select2("val", "");
+                    $("#new_project").select2("val", "");
+                    $("#new_status").select2("val", "");
+                    $("#new_start").val("");
+                    $("#new_stop").val("");
+                    $("#new_comment").val("");
+                },
+
+                // DELETE
+                delete_record: function(e) {
+                    var rId = $(e.currentTarget).data("rid");
+                    
+                    if(confirm("Wirklich löschen?") == true) {
+                        var record = this.timeTable.get(rId);
+                            record.deleteRecord();
+
+                        $(e.currentTarget).parents("tr").remove();
+
+                        // recalculate the hours
+                        this.calc_hours();
+                    }
+                },
+
+                // START ROW EDITING
+                start_row_editing: function(e) {
+                    console.log(e);
+                },
+
+                // CALC HOURS
+                calc_hours: function(e) {
+
+                },
+
+                // CALC ALL HOURS
+                calc_all_hours: function(e) {
+                    var sum = 0.0;
+                    $("#table tr").each(function(i, el) {
+                        var v = parseFloat($(el).find(":nth-child(4)").text());
+                        if(v) {
+                            sum += v;
+                        }
+                    });
+
+                    $("#sum").html(sum.toFixed(2));
+                },
+
+                // OPEN FILTER
+                open_filter: function(e) {
+                    var $e = $(e.currentTarget);
+
+                    $e.popover({
+                        html: "test"
+                    });
+
+                    $e.popover("show");
+                }
+            });
+
+            // initialize navigation bar
+            window.naviView = new NaviView();
+
+            var client = new Dropbox.Client({key: "trjffnxhvv1dc4n"});
+
+            // Try to finish OAuth authorization.
+            client.authenticate({interactive: false}, function (error) {
+                if (error) {
+                    alert("Authentication error: " + error);
+                }
+            });
+
+            if(client.isAuthenticated()) {
+
+                $("#main").html('<div class="loader"><i class="fa fa-circle-o-notch fa-spin"></i></div>');
+
+                // Client is authenticated. Display UI.
+                var datastoreManager = client.getDatastoreManager();
+                datastoreManager.openDefaultDatastore(function (error, datastore) {
+                    if (error) {
+                        alert('Error opening default datastore: ' + error);
+                    }
+
+                    // Now you have a datastore. The next few examples can be included here.
+                    window.datastore = datastore;
+                    window.tableView = new TableView();
+                });
+            }
+
+            $("#loginBtn").on("click", function() {
+                client.authenticate();
+            });
+        });
+
+    </script>
+
+</body>
+</html>

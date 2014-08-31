@@ -195,7 +195,7 @@ int TCP::send(unsigned char msg[], int msglength)
         	break;
     }
 
-    Serial.println("SENDEN!");
+    //Serial.println("SENDEN!");
 
     // send the message
     gsm.SimpleBinaryWriteln(msg, msglength);
