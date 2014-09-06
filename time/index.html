@@ -54,12 +54,12 @@
         <div class="navbar navbar-default" role="navigation" id="navi">
             <div class="container-fluid">
                 <div class="navbar-header">
-                    <a class="navbar-brand" href="#">TrackTrack <b>TIME</b></a>
+                    <a class="navbar-brand" href="https://tracktrack.io/time">TrackTrack <b>TIME</b></a>
                 </div>
 
                 <div class="collapse navbar-collapse navbar-right">
                     <ul class="nav navbar-nav" id="navbar_right">
-                        <li><a href="#" id="csv_export"><i class="fa fa-cloud-download"></i> CSV-Export</a></li>
+                        <li><a href="javascript:void(0);" id="csv_export"><i class="fa fa-cloud-download"></i> CSV-Export</a></li>
                     </ul>
                 </div>
             </div>
@@ -403,10 +403,14 @@
 
                     this.$el.find(".editable-row").remove();
                     this.$el.find("#new_row").before(rt);
+
+                    this.calc_all_hours();
                 },
 
                 // SAVE
                 save_new: function() {
+                    console.log($("#new_start").data("DateTimePicker").getDate());
+
                     var t = {
                         "start": $("#new_start").data("DateTimePicker").getDate().toDate(),
                         "stop": $("#new_stop").data("DateTimePicker").getDate().toDate(),
@@ -431,6 +435,8 @@
                     $("#new_start").val("");
                     $("#new_stop").val("");
                     $("#new_comment").val("");
+
+                    this.calc_all_hours();
                 },
 
                 // DELETE

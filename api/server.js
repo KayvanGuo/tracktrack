@@ -109,7 +109,7 @@ app.post("/login", function(req, res) {
 // EMBED
 app.get("/embed/:key/", function(req, res) {
 
-	serveHtml(res, "embed.html", function(html) {
+	serveHtml(res, "web/embed.html", function(html) {
 		return res.send(html);
 	});
 });
