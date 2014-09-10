@@ -120,7 +120,7 @@ app.get("/embed/latest/:boat", function(req, res) {
 	pool.getConnection(function(err, c) {
 		if (err) throw err;
 
-		c.query("SELECT t.key FROM boats AS b JOIN trips AS t ON t.id = b.currentTrip WHERE b.id = ?", [req.params.boat], function(err, boats) {
+		c.query("SELECT t.key FROM trips AS t WHERE t.boat = ? ORDER BY t.id DESC LIMIT 1", [req.params.boat], function(err, boats) {
 
 			if(err || boats.length != 1) {
 				return res.redirect("/");
