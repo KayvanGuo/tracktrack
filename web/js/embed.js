@@ -70,19 +70,43 @@ $(function() {
 
 		// RENDER
 		render: function() {
-			this.map = L.map("map", {
-				measureControl: true
-			});
 
-			$(".leaflet-control-attribution").html("<a href='//tracktrack.io' target='_blank'>TrackTrack.io</a>");
+			var streetmap = L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
 
-			// add an OpenStreetMap tile layer
-			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+			var satellite = L.tileLayer("//tracktrack.io/api/tileproxy?url=http://otile{s}.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpeg", {
+	            attribution: 'Tiles by <a href="http://www.mapquest.com/">MapQuest</a> &mdash; Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+	            subdomains: '1234'
+	        }); 
 
 			// add seamark layer
-			L.tileLayer("//tracktrack.io/api/tileproxy?url=http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
+			var seamap = L.tileLayer("//tracktrack.io/api/tileproxy?url=http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
 				maxZoom: 17,
 				minZoom: 10
+			});
+
+			var waveheight = L.tileLayer("http://www.openportguide.org/tiles/actual/significant_wave_height/5/6/30/21.png")
+
+			var baseMaps = {
+				"Karte": streetmap,
+				"Satellit": satellite
+			}
+
+			var overlayMaps = { 
+				"Seezeichen": seamap,
+				"Wolken": L.OWM.clouds({showLegend: true, opacity: 0.4}),
+				"Regen" : L.OWM.rainClassic({showLegend: true, opacity: 0.4}),
+				"Isobaren": L.OWM.pressureContour(),
+				"Wind": L.OWM.wind({showLegend: true, opacity: 0.4}),
+				"Temperatur": L.OWM.temperature({showLegend: true, opacity: 0.4}),
+			};
+
+			this.map = L.map("map", {
+				measureControl: true,
+				layers: [streetmap, seamap]
+			});
+
+			var layerControl = L.control.layers(baseMaps, overlayMaps, {
+				"collapsed": false
 			}).addTo(this.map);
 
 			var that = this;
