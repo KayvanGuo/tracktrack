@@ -106,7 +106,7 @@ $(function() {
 			});
 
 			var layerControl = L.control.layers(baseMaps, overlayMaps, {
-				"collapsed": false
+				"collapsed": true
 			}).addTo(this.map);
 
 			var that = this;
