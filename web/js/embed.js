@@ -47,6 +47,7 @@ $(function() {
 
 								// set boat to new position
 								that.assets[i].setLatLng(l);
+								that.assets[i].angle = position.course;
 								that.map.panTo(l, {
 									animate: true
 								});
@@ -102,12 +103,17 @@ $(function() {
 
 					if(data[i].type == "boat" || (data[i].type == "marina" && that.options.a == true)) {
 
-						var marker = L.marker(data[i].coord, {
+						var marker = L.rotatedMarker(data[i].coord, {
 							icon: that.icons[data[i].type],
 							alt: data[i].type + "_" + data[i].id
 						})
 						.bindLabel(data[i].name, { noHide: true })
 						.addTo(that.map);
+
+						// set course of boat icon
+						if(data[i].type == "boat" || "course" in data[i]) {
+							marker.options.angle = data[i].course;
+						}
 
 						that.assets.push(marker);
 

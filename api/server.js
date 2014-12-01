@@ -344,6 +344,7 @@ app.get("/api/assets/:owner", function(req, res) {
 			  			boats.push({
 			  				"id": rows[i].boat,
 			  				"coord": [rows[i].latitude, rows[i].longitude],
+			  				"course": rows[i].course,
 			  				"timestamp": rows[i].timestamp,
 			  				"name": rows[i].name,
 			  				"type": "boat"

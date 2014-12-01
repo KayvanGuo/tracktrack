@@ -11,10 +11,10 @@ var MapView = Backbone.View.extend({
 	currentPosition: null,
 	icons: {
 		boat: L.icon({
-		    iconUrl: "/img/sailing.png",
-		    iconSize: [32, 37], 
-		    iconAnchor:   [16, 37],
-		    labelAnchor: [10, -20]
+		    iconUrl: "/img/rubio_icon.png",
+		    iconSize: [15, 50], 
+		    iconAnchor:   [7, 25],
+		    labelAnchor: [20, 0]
 		}),
 
 		marina: L.icon({
@@ -153,6 +153,29 @@ var MapView = Backbone.View.extend({
 		}
 	}
 });
+
+// ROTATED MARKER
+L.RotatedMarker = L.Marker.extend({
+  options: { angle: 0 },
+  _setPos: function(pos) {
+    L.Marker.prototype._setPos.call(this, pos);
+    if (L.DomUtil.TRANSFORM) {
+      // use the CSS transform rule if available
+      this._icon.style[L.DomUtil.TRANSFORM] += ' rotate(' + this.options.angle + 'deg)';
+    } else if (L.Browser.ie) {
+      // fallback for IE6, IE7, IE8
+      var rad = this.options.angle * L.LatLng.DEG_TO_RAD,
+      costheta = Math.cos(rad),
+      sintheta = Math.sin(rad);
+      this._icon.style.filter += ' progid:DXImageTransform.Microsoft.Matrix(sizingMethod=\'auto expand\', M11=' +
+        costheta + ', M12=' + (-sintheta) + ', M21=' + sintheta + ', M22=' + costheta + ')';
+    }
+  }
+});
+
+L.rotatedMarker = function(pos, options) {
+    return new L.RotatedMarker(pos, options);
+};
 
 $(function() {
 
