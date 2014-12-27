@@ -30,7 +30,7 @@ int GPS_RX = 8;
 int GPS_SPEAKER = 9;
 int GPS_ANCHOR_BUTTON = 10;
 int BAD_POSITION_LED = 12;
-int INTERRUPT_INPUT = 2;
+int INTERRUPT_INPUT = 6;
 
 int pulse_counter = 0;
 
@@ -54,7 +54,7 @@ int wind_direction = 0;
 
 TCP tcp;
 boolean gsmReady = false;
-boolean debug = false;
+boolean debug = true;
 
 // SETUP
 void setup()
@@ -107,7 +107,8 @@ void setup()
     {
         // GPRS attach, put in order APN, username and password.
         // If no needed auth let them blank.
-        if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
+        //if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
+        if(tcp.attachGPRS("internet.eplus.de", "simyo", "simyo"))
         {
             if(debug) Serial.println("status=ATTACHED");
         }
@@ -139,14 +140,14 @@ void loop()
         anchorGuard(d);
 
         // check distance filter
-        float distance = 50;
+        /*float distance = 50;
         if(validatePosition(lastValidPosition) == true) {
             distance = gpsencoder.distance_between(lastValidPosition.lat, lastValidPosition.lon, d.lat, d.lon);
-        }
+        }*/
 
         // only move if the distance between the current and 
         // the last position is
-        if(distance >= DISTANCE_FILTER && distance <= 150000)
+        //if(distance >= DISTANCE_FILTER && distance <= 150000)
         {
             digitalWrite(BAD_POSITION_LED, LOW);
 
@@ -154,7 +155,7 @@ void loop()
             anchorGuard(d);
 
             lastValidPosition = d;
-            if(debug) printPosition(d);
+            //if(debug) printPosition(d);
 
             unsigned char pos[32];
             pos[0] = 'M';
@@ -251,7 +252,7 @@ void loop()
 
             // send the position via tcp to server
             tcp.connect("tracktrack.io", 8100);
-            tcp.send(pos, 32);
+            tcp.send(pos, 38);
             tcp.disconnect();
         }
 
@@ -268,11 +269,13 @@ void loop()
 // CALC WIND
 void calcWind() 
 {
-
     if (pulse_counter > 0)
     {
         float wind_speed_m_s = 2 * PI * CUP_RADIUS * pulse_counter * DAMM_COEFF / PULSE_SAMPLING_RATE; // m per second
         wind_speed = wind_speed_m_s * 1.949; // knots
+
+        if(debug) Serial.print("windspeed: ");
+        if(debug) Serial.println(wind_speed);
 
         // reset pulse counter
         pulse_counter = 0;
@@ -282,6 +285,10 @@ void calcWind()
     double y = ((analogRead(1) - 150.0) / 375) - 1;
   
     wind_direction = atan2(y, x) * (180.0 / PI) + 180;
+    if(debug) {
+        Serial.println("Winddirection ");
+        Serial.println(wind_direction);
+    }
 }
 
 // PULSE INTERRUPT
@@ -386,9 +393,17 @@ struct trackdata getPosition()
     {
     	ihdop = 1;
     }
-  
-    struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear, wind_speed, wind_direction};
-    return position;
+
+    /*if(debug) 
+    {
+        struct trackdata position = {100000, 51.0000, 7.5000, 2.5, 120, 0, 0, 2, 22, 27, 12, 2014, wind_speed, wind_direction};
+        return position;
+    }
+    else */
+    {
+        struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear, wind_speed, wind_direction};
+        return position;
+    }
 }
 
 // PRINT POSTION

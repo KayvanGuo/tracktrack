@@ -492,6 +492,7 @@ net.createServer(function(c) {
 	// END
 	c.on("end", function() {
 
+		//console.log("end");
 		//console.log(buf);
 
 		pool.getConnection(function(err, c) {
