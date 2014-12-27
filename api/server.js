@@ -12,7 +12,6 @@ var passport 		= require("passport");
 var BasicStrategy 	= require("passport-http").BasicStrategy;
 var bcrypt  		= require("bcrypt");
 var bodyParser 		= require("body-parser");
-var geohash			= require("ngeohash");
 var tzwhere 		= require("tzwhere");
 
 /*
@@ -278,7 +277,6 @@ app.get("/api/position/:trip/:latitude/:longitude", function(req, res) {
 
 		if(err) throw err;
 
-		// TODO: umstellen auf geohash
 		c.query("SELECT p.*, (POW(69.1 * (latitude - " + pool.escape(req.params.latitude) +"), 2) + POW(69.1 * (" + pool.escape(req.params.longitude) + " - longitude) * COS(latitude / 57.3), 2)) AS distance FROM positions AS p WHERE p.trip = " + pool.escape(req.params.trip) + " ORDER BY distance LIMIT 1", function(err, rows) {
 
 			if(err) throw err;
@@ -531,7 +529,6 @@ net.createServer(function(c) {
 						"course": working.readInt16LE(20),
 						"hdop": working.readInt16LE(22),
 						"timestamp": dateString,
-						"geohash": geohash.encode(working.readFloatLE(8), working.readFloatLE(12), 10),
 						"anchored": (working.readInt8(31) == 1)
 					};
 

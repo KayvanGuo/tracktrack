@@ -4,6 +4,7 @@
 #include "SIM900.h"
 #include "TCP.h"
 #include <TinyGPS.h>
+#include <TimerOne.h>
 
 struct trackdata
 {
@@ -19,6 +20,8 @@ struct trackdata
     int8_t day;
     int8_t month;
     int16_t year;
+    float windspeed;
+    int16_t winddirection;
 };
 
 // PIN SETTINGS
@@ -27,11 +30,17 @@ int GPS_RX = 8;
 int GPS_SPEAKER = 9;
 int GPS_ANCHOR_BUTTON = 10;
 int BAD_POSITION_LED = 12;
+int INTERRUPT_INPUT = 2;
+
+int pulse_counter = 0;
 
 // CONSTANTS
 int HDOP_THRESHOLD = 150;
 float ANCHOR_RANGE = 20; // meters
-int DISTANCE_FILTER = 3; // meters
+int DISTANCE_FILTER = 1; // meters
+float CUP_RADIUS = 0.06;
+int DAMM_COEFF = 3;
+int PULSE_SAMPLING_RATE = 2; // seconds
 
 // INSTANCES
 TinyGPS gpsencoder;
@@ -39,6 +48,9 @@ SoftwareSerial gps(GPS_TX, GPS_RX);
 boolean guardAnchor = false;
 struct trackdata lastValidPosition;
 struct trackdata guardedPosition;
+
+float wind_speed = 0.0;
+int wind_direction = 0;
 
 TCP tcp;
 boolean gsmReady = false;
@@ -53,6 +65,15 @@ void setup()
     digitalWrite(GPS_ANCHOR_BUTTON, HIGH);
     digitalWrite(GPS_SPEAKER, LOW);
     pinMode(BAD_POSITION_LED, OUTPUT);
+
+    // For noise suppression, enable pullup on interrupt pin
+    digitalWrite(INTERRUPT_INPUT, HIGH);
+    attachInterrupt(INTERRUPT_INPUT - 2,
+                    pulse_interrupt,
+                    RISING);
+  
+    Timer1.initialize(PULSE_SAMPLING_RATE * 1000000);
+    Timer1.attachInterrupt(calcWind);
 
     lastValidPosition.hwid = 100000;
     lastValidPosition.lat = 0.0;
@@ -228,6 +249,31 @@ void loop()
     }
 };
 
+// CALC WIND
+void calcWind() 
+{
+
+    if (pulse_counter > 0)
+    {
+        float wind_speed_m_s = 2 * PI * CUP_RADIUS * pulse_counter * DAMM_COEFF / PULSE_SAMPLING_RATE; // m per second
+        wind_speed = wind_speed_m_s * 1.949; // knots
+
+        // reset pulse counter
+        pulse_counter = 0;
+    }
+  
+    double x = ((analogRead(0) - 150.0) / 375) - 1;
+    double y = ((analogRead(1) - 150.0) / 375) - 1;
+  
+    wind_direction = atan2(y, x) * (180.0 / PI) + 180;
+}
+
+// PULSE INTERRUPT
+void pulse_interrupt()
+{
+    pulse_counter = pulse_counter + 1;
+}
+
 // INT32 TO BUFFER
 void int32ToBuffer(unsigned char *buf, int32_t value) 
 {
@@ -253,7 +299,7 @@ void floatToBuffer(unsigned char *buf, float value)
 // VALIDATE POSITION
 boolean validatePosition(struct trackdata pos) 
 {
-    if(pos.lat > 0.0 && pos.lat <= 180.0 && pos.lon > 0.0 && pos.lon <= 180.0 && pos.hdop >= 0 && pos.speed >= 0.0 && pos.course >= 0 && pos.hdop <= HDOP_THRESHOLD)
+    if(pos.lat >= -90.0 && pos.lat <= 90.0 && pos.lon >= -180.0 && pos.lon <= 180.0 && pos.speed >= 0.0 && pos.course >= 0)
     {
         return true;
     }
@@ -298,77 +344,84 @@ void anchorGuard(struct trackdata position)
 // GET POSITION
 struct trackdata getPosition()
 {
-  readGPS(700);
+    readGPS(700);
 
-  float flat, flon, fspeed;
-  int16_t icourse, ihdop, iyear;
-  int8_t ihundredths, iseconds, iminutes, ihours, iday, imonth;
-  unsigned long age;
+    float flat, flon, fspeed;
+    int16_t icourse, ihdop, iyear;
+    int8_t ihundredths, iseconds, iminutes, ihours, iday, imonth;
+    unsigned long age;
 
-  // get received position data
-  gpsencoder.f_get_position(&flat, &flon, &age);
-  // crack received date and time data into seperate variables
-  crack_datetime(&iyear, &imonth, &iday, &ihours, &iminutes, &iseconds, &ihundredths, &age);
-  // get received speed in knots
-  fspeed = gpsencoder.f_speed_knots();
-  // get received course
-  icourse = (int16_t) gpsencoder.course()/100;
-  // get received HDOP value
-  ihdop = (int16_t) gpsencoder.hdop() / 100;
-  if(ihdop == 0) 
-  {
-  	ihdop = 1;
-  }
+    // get received position data
+    gpsencoder.f_get_position(&flat, &flon, &age);
+
+    // crack received date and time data into seperate variables
+    crack_datetime(&iyear, &imonth, &iday, &ihours, &iminutes, &iseconds, &ihundredths, &age);
+
+    // get received speed in knots
+    fspeed = gpsencoder.f_speed_knots();
+
+    // get received course
+    icourse = (int16_t) gpsencoder.course() / 100;
+
+    // get received HDOP value
+    ihdop = (int16_t) gpsencoder.hdop() / 100;
+
+    if(ihdop == 0) 
+    {
+    	ihdop = 1;
+    }
   
-  struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear};
-  return position;
+    struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear, wind_speed, wind_direction};
+    return position;
 }
 
 // PRINT POSTION
 void printPosition(struct trackdata position)
 {       
-  Serial.print("LAT=");
-  Serial.print(position.lat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : position.lat, 6);
-  Serial.print(" LON=");
-  Serial.print(position.lon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : position.lon, 6);
-  Serial.print(" SPEED=");
-  Serial.print(position.speed);
-  Serial.print(" COURSE=");
-  Serial.print(position.course);
-  Serial.print(" HDOP=");
-  Serial.print(position.hdop);
-  Serial.print(" DATE=");
-  char sz[32];
-  sprintf(sz, "%02d-%02d-%02d %02d:%02d:%02d ", position.year, position.month, position.day, position.hours, position.minutes, position.seconds);
-  Serial.print(sz);
-  Serial.println();
+    Serial.print("LAT=");
+    Serial.print(position.lat == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : position.lat, 6);
+    Serial.print(" LON=");
+    Serial.print(position.lon == TinyGPS::GPS_INVALID_F_ANGLE ? 0.0 : position.lon, 6);
+    Serial.print(" SPEED=");
+    Serial.print(position.speed);
+    Serial.print(" COURSE=");
+    Serial.print(position.course);
+    Serial.print(" HDOP=");
+    Serial.print(position.hdop);
+    Serial.print(" DATE=");
+    char sz[32];
+    sprintf(sz, "%02d-%02d-%02d %02d:%02d:%02d ", position.year, position.month, position.day, position.hours, position.minutes, position.seconds);
+    Serial.print(sz);
+    Serial.println();
 }  
 
 // CRACK DATE AND TIME
 void crack_datetime(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int8_t *minute, int8_t *second, int8_t *hundredths, unsigned long *age)
 {
-  unsigned long date, time;
-  gpsencoder.get_datetime(&date, &time, age);
-  if (year) 
-  {
-    *year = date % 100;
-    *year += *year > 80 ? 1900 : 2000;
-  }
-  if (month) *month = (date / 100) % 100;
-  if (day) *day = date / 10000;
-  if (hour) *hour = time / 1000000;
-  if (minute) *minute = (time / 10000) % 100;
-  if (second) *second = (time / 100) % 100;
-  if (hundredths) *hundredths = time % 100;
+    unsigned long date, time;
+    gpsencoder.get_datetime(&date, &time, age);
+
+    if (year) 
+    {
+        *year = date % 100;
+        *year += *year > 80 ? 1900 : 2000;
+    }
+
+    if (month) *month = (date / 100) % 100;
+    if (day) *day = date / 10000;
+    if (hour) *hour = time / 1000000;
+    if (minute) *minute = (time / 10000) % 100;
+    if (second) *second = (time / 100) % 100;
+    if (hundredths) *hundredths = time % 100;
 }
 
 // READ GPS
 static void readGPS(unsigned long ms)
 {
-  unsigned long start = millis();
-  do 
-  {
-    while (gps.available())
-    gpsencoder.encode(gps.read());
-  } while (millis() - start < ms);
+    unsigned long start = millis();
+    do 
+    {
+        while (gps.available())
+        gpsencoder.encode(gps.read());
+    } while (millis() - start < ms);
 }
