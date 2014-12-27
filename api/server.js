@@ -516,7 +516,7 @@ net.createServer(function(c) {
 				if(buf[i] == 77 && buf[i + 1] == 67 && buf[i + 2] == 71 && buf[i + 3] == 80) {
 
 					// slice a message piece out?
-					var working = buf.slice(i, i + 32);
+					var working = buf.slice(i, i + 38);
 
 					// interpret and store working buffer
 					var dateString = working.readInt16LE(29) + "-" + zero(working.readInt8(28)) + "-" + zero(working.readInt8(27)) + " " + zero(working.readInt8(26)) + ":" + zero(working.readInt8(25)) + ":" + zero(working.readInt8(24));
@@ -529,7 +529,9 @@ net.createServer(function(c) {
 						"course": working.readInt16LE(20),
 						"hdop": working.readInt16LE(22),
 						"timestamp": dateString,
-						"anchored": (working.readInt8(31) == 1)
+						"anchored": (working.readInt8(31) == 1),
+						"windspeed": working.readFloatLE(32),
+						"winddirection": working.readInt16LE(36)
 					};
 
 					// add new array to positions dict

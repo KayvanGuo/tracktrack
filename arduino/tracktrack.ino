@@ -231,6 +231,22 @@ void loop()
             	pos[31] = 0;
             }
 
+            // wind speed
+            unsigned char windSpeedBuf[4];
+            floatToBuffer(windSpeedBuf, d.windspeed);
+
+            pos[32] = windSpeedBuf[0];
+            pos[33] = windSpeedBuf[1];
+            pos[34] = windSpeedBuf[2];
+            pos[35] = windSpeedBuf[3];
+
+            // wind direction
+            unsigned char windDirBuf[2];
+            int16ToBuffer(windDirBuf, d.winddirection);
+
+            pos[36] = windDirBuf[0];
+            pos[37] = windDirBuf[1];
+
             gsm.listen();
 
             // send the position via tcp to server
