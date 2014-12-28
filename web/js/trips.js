@@ -62,6 +62,8 @@ $(function() {
 			// load assets
 			var that = this;
 			$.getJSON("/api/assets/" + this.params.owner, function(data) {
+
+				console.log(data);
 				
 				var bounds = [];
 				for(var i in data) {
@@ -415,8 +417,6 @@ $(function() {
         beforeSend: function(xhr) { 
             var e = localStorage.getItem("e");
 			var p = localStorage.getItem("p");
-
-			console.log(e, p);
 
             // if we have a username / password stored, use it for http-basic-auth
             if (window.validate(e) && window.validate(p)) {

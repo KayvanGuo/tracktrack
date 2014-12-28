@@ -343,6 +343,7 @@ app.get("/api/assets/:owner", function(req, res) {
 			  				"id": rows[i].boat,
 			  				"coord": [rows[i].latitude, rows[i].longitude],
 			  				"course": rows[i].course,
+			  				"speed": rows[i].speed,
 			  				"timestamp": rows[i].timestamp,
 			  				"name": rows[i].name,
 			  				"type": "boat"
