@@ -62,6 +62,7 @@ var io 		= require("socket.io")(server);
 
 app.use("/css", express.static("/var/www/boattrack/web/css"));
 app.use("/js", express.static("/var/www/boattrack/web/js"));
+app.use("/libs", express.static("/var/www/boattrack/web/js/libs"));
 app.use("/img", express.static("/var/www/boattrack/web/img"));
 app.use(passport.initialize());
 app.use(bodyParser.json()); 

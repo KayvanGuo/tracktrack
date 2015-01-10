@@ -72,8 +72,8 @@ void setup()
                     pulse_interrupt,
                     RISING);
   
-    Timer1.initialize(PULSE_SAMPLING_RATE * 1000000);
-    Timer1.attachInterrupt(calcWind);
+    //Timer1.initialize(PULSE_SAMPLING_RATE * 1000000);
+    //Timer1.attachInterrupt(calcWind);
 
     lastValidPosition.hwid = 100000;
     lastValidPosition.lat = 0.0;
@@ -280,13 +280,14 @@ void calcWind()
         // reset pulse counter
         pulse_counter = 0;
     }
-  
+
+
     double x = ((analogRead(0) - 150.0) / 375) - 1;
     double y = ((analogRead(1) - 150.0) / 375) - 1;
   
     wind_direction = atan2(y, x) * (180.0 / PI) + 180;
     if(debug) {
-        Serial.println("Winddirection ");
+        Serial.print("Winddirection ");
         Serial.println(wind_direction);
     }
 }
@@ -295,6 +296,7 @@ void calcWind()
 void pulse_interrupt()
 {
     pulse_counter = pulse_counter + 1;
+    Serial.println(pulse_counter);
 }
 
 // INT32 TO BUFFER
@@ -394,12 +396,12 @@ struct trackdata getPosition()
     	ihdop = 1;
     }
 
-    /*if(debug) 
+    if(debug) 
     {
-        struct trackdata position = {100000, 51.0000, 7.5000, 2.5, 120, 0, 0, 2, 22, 27, 12, 2014, wind_speed, wind_direction};
+        struct trackdata position = {100000, 51.0000, 7.5000, 2.5, 120, 0, 0, 25, 22, 10, 1, 2015, wind_speed, wind_direction};
         return position;
     }
-    else */
+    else
     {
         struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear, wind_speed, wind_direction};
         return position;

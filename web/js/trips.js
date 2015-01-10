@@ -84,18 +84,19 @@ $(function() {
 
 						case "boat":
 
-							marker = L.rotatedMarker(data[i].coord, {
-								icon: that.icons[data[i].type],
-								alt: data[i].type + "_" + data[i].id
-							})
-							.bindLabel(data[i].name, { noHide: true })
-							.addTo(that.map);
+							marker = L.boatMarker(data[i].coord, {
+								alt: data[i].type + "_" + data[i].id,
+								color: "#f1c40f"
+							});
+							
+							marker.bindLabel(data[i].name, { noHide: true })
+							marker.addTo(that.map);
 
 							window.boat = marker;
 
 							// set course of boat icon
 							if("course" in data[i]) {
-								marker.options.angle = data[i].course;
+								marker.setHeading(data[i].course);
 							}
 						
 							break;
@@ -212,7 +213,8 @@ $(function() {
 			var pos = this.tripData[idx];
 			var l = [pos.latitude, pos.longitude];
 			window.boat.setLatLng(l);
-			window.boat.options.angle = pos.course;
+
+			window.boat.setHeading(pos.course);
 			window.mapView.map.panTo(l);
 		},
 
