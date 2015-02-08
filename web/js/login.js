@@ -22,7 +22,15 @@ $(function() {
 			$(".leaflet-control-container").hide();
 
 			// add an OpenStreetMap tile layer
-			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+			if(navigator.userAgent.toLowerCase().indexOf('firefox') == -1 && mapboxgl.util.supported()) {
+				var gl = L.mapboxGL({
+				    accessToken: "pk.eyJ1IjoidG9tYXN6YnJ1ZSIsImEiOiJ5dXV3N3A0In0.1RNvzTlGXJVR_SCoKGQ3nA",
+				    style: "https://www.mapbox.com/mapbox-gl-styles/styles/outdoors-v6.json"
+				}).addTo(this.map);
+			}
+			else {
+				L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+			}
 		}
 	});
 

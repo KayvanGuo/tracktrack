@@ -47,10 +47,18 @@ $(function() {
 			$(".leaflet-control-attribution").hide();
 
 			// add an OpenStreetMap tile layer
-			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+			if(navigator.userAgent.toLowerCase().indexOf('firefox') == -1 && mapboxgl.util.supported()) {
+				var gl = L.mapboxGL({
+				    accessToken: "pk.eyJ1IjoidG9tYXN6YnJ1ZSIsImEiOiJ5dXV3N3A0In0.1RNvzTlGXJVR_SCoKGQ3nA",
+				    style: "https://www.mapbox.com/mapbox-gl-styles/styles/outdoors-v6.json"
+				}).addTo(this.map);
+			}
+			else {
+				L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+			}
 
 			// add seamark layer
-			L.tileLayer("https://tracktrack.io/api/tileproxy?url=http://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", {
+			L.tileLayer("https://tracktrack.io/seamark/{z}/{x}/{y}.png", {
 				maxZoom: 17,
 				minZoom: 10
 			}).addTo(this.map);

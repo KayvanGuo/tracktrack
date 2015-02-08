@@ -30,7 +30,8 @@ int GPS_RX = 8;
 int GPS_SPEAKER = 9;
 int GPS_ANCHOR_BUTTON = 10;
 int BAD_POSITION_LED = 12;
-int INTERRUPT_INPUT = 6;
+int INTERRUPT_PIN = 21;
+int INTERRUPT_INPUT = 2;
 
 int pulse_counter = 0;
 
@@ -67,13 +68,13 @@ void setup()
     pinMode(BAD_POSITION_LED, OUTPUT);
 
     // For noise suppression, enable pullup on interrupt pin
-    digitalWrite(INTERRUPT_INPUT, HIGH);
-    attachInterrupt(INTERRUPT_INPUT - 2,
+    digitalWrite(INTERRUPT_PIN, HIGH);
+    attachInterrupt(INTERRUPT_INPUT,
                     pulse_interrupt,
                     RISING);
   
-    //Timer1.initialize(PULSE_SAMPLING_RATE * 1000000);
-    //Timer1.attachInterrupt(calcWind);
+    Timer1.initialize(PULSE_SAMPLING_RATE * 1000000);
+    Timer1.attachInterrupt(calcWind);
 
     lastValidPosition.hwid = 100000;
     lastValidPosition.lat = 0.0;
@@ -106,7 +107,7 @@ void setup()
     if(gsmReady)
     {
         // GPRS attach, put in order APN, username and password.
-        // If no needed auth let them blank.
+
         //if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
         if(tcp.attachGPRS("internet.eplus.de", "simyo", "simyo"))
         {
@@ -248,7 +249,7 @@ void loop()
             pos[36] = windDirBuf[0];
             pos[37] = windDirBuf[1];
 
-            gsm.listen();
+            //gsm.listen();
 
             // send the position via tcp to server
             tcp.connect("tracktrack.io", 8100);
@@ -274,29 +275,20 @@ void calcWind()
         float wind_speed_m_s = 2 * PI * CUP_RADIUS * pulse_counter * DAMM_COEFF / PULSE_SAMPLING_RATE; // m per second
         wind_speed = wind_speed_m_s * 1.949; // knots
 
-        if(debug) Serial.print("windspeed: ");
-        if(debug) Serial.println(wind_speed);
-
         // reset pulse counter
         pulse_counter = 0;
     }
-
 
     double x = ((analogRead(0) - 150.0) / 375) - 1;
     double y = ((analogRead(1) - 150.0) / 375) - 1;
   
     wind_direction = atan2(y, x) * (180.0 / PI) + 180;
-    if(debug) {
-        Serial.print("Winddirection ");
-        Serial.println(wind_direction);
-    }
 }
 
 // PULSE INTERRUPT
 void pulse_interrupt()
 {
     pulse_counter = pulse_counter + 1;
-    Serial.println(pulse_counter);
 }
 
 // INT32 TO BUFFER
@@ -422,6 +414,11 @@ void printPosition(struct trackdata position)
     Serial.print(" HDOP=");
     Serial.print(position.hdop);
     Serial.print(" DATE=");
+    Serial.print(position.hdop);
+    Serial.print(" WINDIDR=");
+    Serial.print(position.winddirection);
+    Serial.print(" WINDSPD=");
+    Serial.print(position.windspeed);
     char sz[32];
     sprintf(sz, "%02d-%02d-%02d %02d:%02d:%02d ", position.year, position.month, position.day, position.hours, position.minutes, position.seconds);
     Serial.print(sz);
