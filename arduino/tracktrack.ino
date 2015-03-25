@@ -109,7 +109,8 @@ void setup()
         // GPRS attach, put in order APN, username and password.
 
         //if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
-        if(tcp.attachGPRS("internet.eplus.de", "simyo", "simyo"))
+        //if(tcp.attachGPRS("internet.eplus.de", "simyo", "simyo"))
+        if(tcp.attachGPRS("internet.t-mobile", "tm", "tm"))
         {
             if(debug) Serial.println("status=ATTACHED");
         }
@@ -135,20 +136,20 @@ void loop()
     struct trackdata d = getPosition();
 
     // position valid?
-    if (validatePosition(d))
+    if (validatePosition(d) == true)
     {
         // check if anchor guard is active
         anchorGuard(d);
 
         // check distance filter
-        /*float distance = 50;
+        float distance = 50;
         if(validatePosition(lastValidPosition) == true) {
             distance = gpsencoder.distance_between(lastValidPosition.lat, lastValidPosition.lon, d.lat, d.lon);
-        }*/
+        }
 
         // only move if the distance between the current and 
         // the last position is
-        //if(distance >= DISTANCE_FILTER && distance <= 150000)
+        if(distance >= DISTANCE_FILTER && distance <= 150000)
         {
             digitalWrite(BAD_POSITION_LED, LOW);
 
@@ -156,7 +157,7 @@ void loop()
             anchorGuard(d);
 
             lastValidPosition = d;
-            //if(debug) printPosition(d);
+            if(debug) printPosition(d);
 
             unsigned char pos[32];
             pos[0] = 'M';
@@ -249,9 +250,10 @@ void loop()
             pos[36] = windDirBuf[0];
             pos[37] = windDirBuf[1];
 
-            //gsm.listen();
+            gsm.listen();
 
             // send the position via tcp to server
+            Serial.println("Senden!");
             tcp.connect("tracktrack.io", 8100);
             tcp.send(pos, 38);
             tcp.disconnect();
@@ -316,7 +318,7 @@ void floatToBuffer(unsigned char *buf, float value)
 // VALIDATE POSITION
 boolean validatePosition(struct trackdata pos) 
 {
-    if(pos.lat >= -90.0 && pos.lat <= 90.0 && pos.lon >= -180.0 && pos.lon <= 180.0 && pos.speed >= 0.0 && pos.course >= 0)
+    if(pos.lat >= -90.0 && pos.lat <= 90.0 && pos.lon >= -180.0 && pos.lon <= 180.0)
     {
         return true;
     }
@@ -388,16 +390,16 @@ struct trackdata getPosition()
     	ihdop = 1;
     }
 
-    if(debug) 
+    /*if(debug) 
     {
-        struct trackdata position = {100000, 51.0000, 7.5000, 2.5, 120, 0, 0, 25, 22, 10, 1, 2015, wind_speed, wind_direction};
+        struct trackdata position = {100000, 51.0000, 7.4000, 2.5, 120, 0, 0, 25, 16, 14, 2, 2015, wind_speed, wind_direction};
         return position;
     }
     else
-    {
+    {*/
         struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear, wind_speed, wind_direction};
         return position;
-    }
+    //}
 }
 
 // PRINT POSTION

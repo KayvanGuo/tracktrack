@@ -96,7 +96,7 @@ $(function() {
 								alt: data[i].type + "_" + data[i].id,
 								color: "#f1c40f"
 							});
-							
+
 							marker.bindLabel(data[i].name, { noHide: true })
 							marker.addTo(that.map);
 
@@ -104,7 +104,17 @@ $(function() {
 
 							// set course of boat icon
 							if("course" in data[i]) {
-								marker.setHeading(data[i].course);
+								if("wind" in data[i]) {
+									if(data[i]["wind"]["speed"] != null && data[i]["wind"]["direction"] != null) {
+										marker.setHeadingWind(data[i].course, data[i].wind.speed, data[i].wind.direction);
+									}
+									else {
+										marker.setHeading(data[i].course);
+									}
+								}
+								else {
+									marker.setHeading(data[i].course);
+								}
 							}
 						
 							break;
@@ -222,7 +232,14 @@ $(function() {
 			var l = [pos.latitude, pos.longitude];
 			window.boat.setLatLng(l);
 
-			window.boat.setHeading(pos.course);
+			//window.boat.setHeading(pos.course);
+			if(pos["windspeed"] != null && pos["winddirection"] != null) {
+				window.boat.setHeadingWind(pos.course, pos.windspeed, pos.winddirection);
+			}
+			else {
+				window.boat.setHeading(pos.course);
+			}
+
 			window.mapView.map.panTo(l);
 		},
 

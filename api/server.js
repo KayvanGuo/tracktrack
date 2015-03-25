@@ -222,7 +222,7 @@ app.get("/api/positions/:trip", function(req, res) {
 
 				if(err) throw err;
 
-				c.query("SELECT latitude, longitude, speed, course, timestamp, anchored FROM positions WHERE trip = " + pool.escape(req.params.trip) + " ORDER BY timestamp", function(err, rows) {
+				c.query("SELECT latitude, longitude, speed, course, timestamp, anchored, windspeed, winddirection FROM positions WHERE trip = " + pool.escape(req.params.trip) + " ORDER BY timestamp", function(err, rows) {
 					if(err) throw err;
 			    	c.release();
 
@@ -346,6 +346,10 @@ app.get("/api/assets/:owner", function(req, res) {
 			  				"course": rows[i].course,
 			  				"speed": rows[i].speed,
 			  				"timestamp": rows[i].timestamp,
+			  				"wind": {
+			  					"speed": rows[i].windspeed,
+			  					"direction": rows[i].winddirection
+			  				},
 			  				"name": rows[i].name,
 			  				"type": "boat"
 			  			});

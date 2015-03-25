@@ -49,6 +49,13 @@ $(function() {
 								that.assets[i].setLatLng(l);
 								that.assets[i].setHeading(position.course);
 
+								if(position["windspeed"] != null && position["winddirection"] != null) {
+									that.assets[i].setHeadingWind(position.course, position.windspeed, position.winddirection);
+								}
+								else {
+									that.assets[i].setHeading(position.course);
+								}
+
 								that.map.panTo(l, {
 									animate: true
 								});
@@ -132,7 +139,18 @@ $(function() {
 
 						// set course of boat icon
 						if(data[i].type == "boat" || "course" in data[i]) {
-							marker.setHeading(data[i].course);
+
+							if("wind" in data[i]) {
+								if(data[i]["wind"]["speed"] != null && data[i]["wind"]["direction"] != null) {
+									marker.setHeadingWind(data[i].course, data[i].wind.speed, data[i].wind.direction);
+								}
+								else {
+									marker.setHeading(data[i].course);
+								}
+							}
+							else {
+								marker.setHeading(data[i].course);
+							}
 						}
 
 						that.assets.push(marker);
