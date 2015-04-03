@@ -81,7 +81,7 @@ var MapView = Backbone.View.extend({
 		        optionIdxFn: function (latLng) {
 
 		        	var spd = speeds[latLng.lat * latLng.lng];
-		            return parseInt(spd);
+		            return Math.round(spd);
 		        },
 		        options: [
 		            {color: "#0ecd7b"}, {color: "#65c961"}, {color: "#aac64c"},
@@ -91,7 +91,7 @@ var MapView = Backbone.View.extend({
 		    },
 		    weight: 5,
 		    lineCap: "round",
-		    opacity: 0.9,
+		    opacity: 0.75,
 		    smoothFactor: 1
 		}).addTo(this.map);
 
