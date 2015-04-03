@@ -87,9 +87,10 @@ $(function() {
 
 			// add an OpenStreetMap tile layer
 			if(navigator.userAgent.toLowerCase().indexOf('firefox') == -1 && mapboxgl.util.supported()) {
+
 				var gl = L.mapboxGL({
 				    accessToken: "pk.eyJ1IjoidG9tYXN6YnJ1ZSIsImEiOiJ5dXV3N3A0In0.1RNvzTlGXJVR_SCoKGQ3nA",
-				    style: "/libs/outdoors-v6.json"
+				    style: "/libs/outdoors-v7.json"
 				}).addTo(this.map);
 			}
 			else {
