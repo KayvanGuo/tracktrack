@@ -63,10 +63,6 @@ $(function() {
 				minZoom: 10
 			}).addTo(this.map);
 
-			/*L.tileLayer('http://{s}.tile.openweathermap.org/map/wind/{z}/{x}/{y}.png', {
-			    maxZoom: 18
-			}).addTo(this.map);*/
-
 			// load assets
 			var that = this;
 			$.getJSON("/api/assets/" + this.params.owner, function(data) {
@@ -211,7 +207,7 @@ $(function() {
 			else {
 				$.getJSON("/api/positions/" + $e.data("id"), function(p) {
 
-					console.log(p);
+					//console.log(JSON.stringify(p));
 
 					that.tripData = p.positions;
 					window.mapView.addBoatPath($e.data("id"), p);
