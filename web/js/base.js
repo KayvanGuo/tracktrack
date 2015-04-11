@@ -61,7 +61,7 @@ var MapView = Backbone.View.extend({
 		var coords = [];
 		var speeds = {};
 		for(var i in data.positions) {
-			speeds[data.positions[i].latitude * data.positions[i].longitude] = data.positions[i].speed;
+			speeds[data.positions[i].latitude + "_" + data.positions[i].longitude] = data.positions[i].speed;
 			coords.push(L.latLng(data.positions[i].latitude, data.positions[i].longitude));
 		}
 
@@ -72,16 +72,14 @@ var MapView = Backbone.View.extend({
 		}
 
 		// create polyline
-		/*this.boatpath = L.polyline(coords, {
-			color: "red"
-		});*/
-
 		this.boatpath = L.multiOptionsPolyline(coords, {
 		    multiOptions: {
 		        optionIdxFn: function (latLng) {
 
-		        	var spd = speeds[latLng.lat * latLng.lng];
-		            return Math.round(spd);
+		        	var spd = speeds[latLng.lat + "_" + latLng.lng];
+		            var idx = Math.round(spd);
+
+		            return (idx > 6) ? 6 : idx;
 		        },
 		        options: [
 		            {color: "#0ecd7b"}, {color: "#65c961"}, {color: "#aac64c"},
@@ -92,7 +90,7 @@ var MapView = Backbone.View.extend({
 		    weight: 5,
 		    lineCap: "round",
 		    opacity: 0.75,
-		    smoothFactor: 1
+		    smoothFactor: 2
 		}).addTo(this.map);
 
 		// a click on the path
@@ -101,8 +99,6 @@ var MapView = Backbone.View.extend({
 				that.addPathPopup(data);
 			});
 		});
-
-		//this.boatpath.addTo(this.map);
 
 		// center map arond trip
 		if(options.fit == true) {
