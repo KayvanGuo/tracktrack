@@ -25,8 +25,6 @@ struct trackdata
 };
 
 // PIN SETTINGS
-int GPS_TX = 7;
-int GPS_RX = 8;
 int GPS_SPEAKER = 9;
 int GPS_ANCHOR_BUTTON = 10;
 int BAD_POSITION_LED = 12;
@@ -45,7 +43,7 @@ int PULSE_SAMPLING_RATE = 2; // seconds
 
 // INSTANCES
 TinyGPS gpsencoder;
-SoftwareSerial gps(GPS_TX, GPS_RX);
+
 boolean guardAnchor = false;
 struct trackdata lastValidPosition;
 struct trackdata guardedPosition;
@@ -89,7 +87,7 @@ void setup()
     Serial.begin(9600);
   
     // init GPS serial connection
-    gps.begin(9600);
+    Serial2.begin(9600);
 
     // establish serial connection to gsm module
     if(debug) Serial.println("GSM Shield...");
@@ -108,9 +106,9 @@ void setup()
     {
         // GPRS attach, put in order APN, username and password.
 
-        //if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
+        if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
         //if(tcp.attachGPRS("internet.eplus.de", "simyo", "simyo"))
-        if(tcp.attachGPRS("internet.t-mobile", "tm", "tm"))
+        //if(tcp.attachGPRS("internet.t-mobile", "tm", "tm"))
         {
             if(debug) Serial.println("status=ATTACHED");
         }
@@ -132,8 +130,9 @@ void setup()
 // LOOP
 void loop() 
 {
-    gps.listen();
     struct trackdata d = getPosition();
+
+    if(debug) printPosition(d);
 
     // position valid?
     if (validatePosition(d) == true)
@@ -142,14 +141,18 @@ void loop()
         anchorGuard(d);
 
         // check distance filter
-        float distance = 50;
+        /*float distance = 50;
         if(validatePosition(lastValidPosition) == true) {
             distance = gpsencoder.distance_between(lastValidPosition.lat, lastValidPosition.lon, d.lat, d.lon);
         }
 
+        Serial.print("Distance:");
+        Serial.println(distance);
+
         // only move if the distance between the current and 
         // the last position is
-        if(distance >= DISTANCE_FILTER && distance <= 150000)
+        //if(distance >= DISTANCE_FILTER && distance <= 150000)*/
+        if(true)
         {
             digitalWrite(BAD_POSITION_LED, LOW);
 
@@ -257,9 +260,32 @@ void loop()
             tcp.connect("tracktrack.io", 8100);
             tcp.send(pos, 38);
             tcp.disconnect();
+
+            // LED blink
+            digitalWrite(BAD_POSITION_LED, HIGH);
+            delay(50);
+            digitalWrite(BAD_POSITION_LED, LOW);
+            delay(100);
+            digitalWrite(BAD_POSITION_LED, HIGH);
+            delay(50);
+            digitalWrite(BAD_POSITION_LED, LOW);
+
+            if(debug) Serial.println("Sent!");
         }
 
-        delay(1000);
+        // wait 8 sec if speed is below 1 knot,
+        // wait 1 sec if speed is above 1 knot
+        int waiting = 1000;
+        if(d.speed < 1.0) {
+            waiting = 8000;
+        }
+
+        // if anchor guard is active speed up the waiting
+        if(guardAnchor == true) {
+            waiting = 500;
+        }
+
+        delay(waiting);
     }
     else
     {
@@ -326,6 +352,7 @@ boolean validatePosition(struct trackdata pos)
     return false;
 }
 
+// ANCHOR GUARD
 void anchorGuard(struct trackdata position)
 {
     guardAnchor = (digitalRead(GPS_ANCHOR_BUTTON) == HIGH);
@@ -453,7 +480,7 @@ static void readGPS(unsigned long ms)
     unsigned long start = millis();
     do 
     {
-        while (gps.available())
-        gpsencoder.encode(gps.read());
+        while (Serial2.available())
+        gpsencoder.encode(Serial2.read());
     } while (millis() - start < ms);
 }
