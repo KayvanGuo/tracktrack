@@ -20,19 +20,18 @@ struct trackdata
 };
 
 // PIN SETTINGS
-int GPS_TX = 7;
-int GPS_RX = 8;
+//int GPS_TX = 7;
+//int GPS_RX = 8;
 
 int pulse_counter = 0;
 
 // CONSTANTS
 int HDOP_THRESHOLD = 150;
-float ANCHOR_RANGE = 20; // meters
 int DISTANCE_FILTER = 1; // meters
 
 // INSTANCES
 TinyGPS gpsencoder;
-SoftwareSerial gps(GPS_TX, GPS_RX);
+//SoftwareSerial gps(GPS_TX, GPS_RX);
 
 struct trackdata lastValidPosition;
 struct trackdata guardedPosition;
@@ -53,10 +52,11 @@ void setup()
     guardedPosition.lat = 0.0;
     guardedPosition.lon = 0.0;
 
+    // init serial connection to board
     Serial.begin(9600);
   
     // init GPS serial connection
-    gps.begin(9600);
+    Serial2.begin(9600);
 
     Serial.println("Los gehts!");
 };
@@ -64,7 +64,7 @@ void setup()
 // LOOP
 void loop() 
 {
-    gps.listen();
+    //gps.listen();
     struct trackdata d = getPosition();
 
     // position valid?
@@ -174,7 +174,7 @@ static void readGPS(unsigned long ms)
     unsigned long start = millis();
     do 
     {
-        while (gps.available())
-        gpsencoder.encode(gps.read());
+        while (Serial2.available())
+        gpsencoder.encode(Serial2.read());
     } while (millis() - start < ms);
 }
