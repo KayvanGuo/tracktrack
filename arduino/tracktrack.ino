@@ -1,10 +1,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <SoftwareSerial.h>
-#include "SIM900.h"
-#include "TCP.h"
 #include <TinyGPS.h>
-#include <TimerOne.h>
 
 struct trackdata
 {
@@ -20,18 +17,11 @@ struct trackdata
     int8_t day;
     int8_t month;
     int16_t year;
-    float windspeed;
-    int16_t winddirection;
 };
 
 // PIN SETTINGS
 int GPS_TX = 7;
 int GPS_RX = 8;
-int GPS_SPEAKER = 9;
-int GPS_ANCHOR_BUTTON = 10;
-int BAD_POSITION_LED = 12;
-int INTERRUPT_PIN = 21;
-int INTERRUPT_INPUT = 2;
 
 int pulse_counter = 0;
 
@@ -39,42 +29,19 @@ int pulse_counter = 0;
 int HDOP_THRESHOLD = 150;
 float ANCHOR_RANGE = 20; // meters
 int DISTANCE_FILTER = 1; // meters
-float CUP_RADIUS = 0.06;
-int DAMM_COEFF = 3;
-int PULSE_SAMPLING_RATE = 2; // seconds
 
 // INSTANCES
 TinyGPS gpsencoder;
 SoftwareSerial gps(GPS_TX, GPS_RX);
-boolean guardAnchor = false;
+
 struct trackdata lastValidPosition;
 struct trackdata guardedPosition;
 
-float wind_speed = 0.0;
-int wind_direction = 0;
-
-TCP tcp;
-boolean gsmReady = false;
 boolean debug = true;
 
 // SETUP
 void setup()
 {
-    // configure pins
-    pinMode(GPS_SPEAKER, OUTPUT);
-    pinMode(GPS_ANCHOR_BUTTON, INPUT);
-    digitalWrite(GPS_ANCHOR_BUTTON, HIGH);
-    digitalWrite(GPS_SPEAKER, LOW);
-    pinMode(BAD_POSITION_LED, OUTPUT);
-
-    // For noise suppression, enable pullup on interrupt pin
-    digitalWrite(INTERRUPT_PIN, HIGH);
-    attachInterrupt(INTERRUPT_INPUT,
-                    pulse_interrupt,
-                    RISING);
-  
-    Timer1.initialize(PULSE_SAMPLING_RATE * 1000000);
-    Timer1.attachInterrupt(calcWind);
 
     lastValidPosition.hwid = 100000;
     lastValidPosition.lat = 0.0;
@@ -91,42 +58,7 @@ void setup()
     // init GPS serial connection
     gps.begin(9600);
 
-    // establish serial connection to gsm module
-    if(debug) Serial.println("GSM Shield...");
-    if(gsm.begin(2400)) 
-    {
-        if(debug) Serial.println("\nstatus=READY");
-        gsmReady = true;
-    }
-    else 
-    {
-        if(debug) Serial.println("\nstatus=IDLE"); 
-    } 
-  
-    // GSM shield is ready
-    if(gsmReady)
-    {
-        // GPRS attach, put in order APN, username and password.
-
-        //if(tcp.attachGPRS("live.vodafone.com", "vodafone", "vodafone"))
-        //if(tcp.attachGPRS("internet.eplus.de", "simyo", "simyo"))
-        if(tcp.attachGPRS("internet.t-mobile", "tm", "tm"))
-        {
-            if(debug) Serial.println("status=ATTACHED");
-        }
-        else 
-        {
-            if(debug) Serial.println("status=ERROR");
-        }
-    
-        delay(500);
-
-        // Read IP address.
-        gsm.SimpleWriteln("AT+CIFSR");
-        delay(500);
-    
-        gsm.WhileSimpleRead();
-    }
+    Serial.println("Los gehts!");
 };
 
 // LOOP
@@ -138,182 +70,17 @@ void loop()
     // position valid?
     if (validatePosition(d) == true)
     {
-        // check if anchor guard is active
-        anchorGuard(d);
-
-        // check distance filter
-        float distance = 50;
-        if(validatePosition(lastValidPosition) == true) {
-            distance = gpsencoder.distance_between(lastValidPosition.lat, lastValidPosition.lon, d.lat, d.lon);
-        }
-
-        // only move if the distance between the current and 
-        // the last position is
-        if(distance >= DISTANCE_FILTER && distance <= 150000)
-        {
-            digitalWrite(BAD_POSITION_LED, LOW);
-
-            // check if anchor guard is active
-            anchorGuard(d);
-
-            lastValidPosition = d;
-            if(debug) printPosition(d);
-
-            unsigned char pos[32];
-            pos[0] = 'M';
-            pos[1] = 'C';
-            pos[2] = 'G';
-            pos[3] = 'P';
-
-            // hardware id
-            unsigned char hwidBuf[4];
-            int32ToBuffer(hwidBuf, d.hwid);
-
-            pos[4]  = hwidBuf[0];
-            pos[5]  = hwidBuf[1];
-            pos[6]  = hwidBuf[2];
-            pos[7]  = hwidBuf[3];
-
-            // latitude
-            unsigned char latBuf[4];
-            floatToBuffer(latBuf, d.lat);
-
-            pos[8] = latBuf[0];
-            pos[9] = latBuf[1];
-            pos[10] = latBuf[2];
-            pos[11] = latBuf[3];
-
-            // longitude
-            unsigned char lonBuf[4];
-            floatToBuffer(lonBuf, d.lon);
-
-            pos[12] = lonBuf[0];
-            pos[13] = lonBuf[1];
-            pos[14] = lonBuf[2];
-            pos[15] = lonBuf[3];
-
-            // speed
-            unsigned char speedBuf[4];
-            floatToBuffer(speedBuf, d.speed);
-
-            pos[16] = speedBuf[0];
-            pos[17] = speedBuf[1];
-            pos[18] = speedBuf[2];
-            pos[19] = speedBuf[3];
-
-            // course
-            unsigned char courseBuf[2];
-            int16ToBuffer(courseBuf, d.course);
-
-            pos[20] = courseBuf[0];
-            pos[21] = courseBuf[1];
-
-            // hdop
-            unsigned char hdopBuf[2];
-            int16ToBuffer(hdopBuf, d.hdop);
-
-            pos[22] = hdopBuf[0];
-            pos[23] = hdopBuf[1];
-
-            // utc
-            pos[24] = d.seconds;
-            pos[25] = d.minutes;
-            pos[26] = d.hours;
-            pos[27] = d.day;
-            pos[28] = d.month;
-
-            unsigned char yearBuf[2];
-            int16ToBuffer(yearBuf, d.year);
-            pos[29] = yearBuf[0];
-            pos[30] = yearBuf[1];
-
-            if(guardAnchor == true) {
-            	pos[31] = 1;
-            }
-            else {
-            	pos[31] = 0;
-            }
-
-            // wind speed
-            unsigned char windSpeedBuf[4];
-            floatToBuffer(windSpeedBuf, d.windspeed);
-
-            pos[32] = windSpeedBuf[0];
-            pos[33] = windSpeedBuf[1];
-            pos[34] = windSpeedBuf[2];
-            pos[35] = windSpeedBuf[3];
-
-            // wind direction
-            unsigned char windDirBuf[2];
-            int16ToBuffer(windDirBuf, d.winddirection);
-
-            pos[36] = windDirBuf[0];
-            pos[37] = windDirBuf[1];
-
-            gsm.listen();
-
-            // send the position via tcp to server
-            Serial.println("Senden!");
-            tcp.connect("tracktrack.io", 8100);
-            tcp.send(pos, 38);
-            tcp.disconnect();
-        }
+        lastValidPosition = d;
+        if(debug) printPosition(d);
 
         delay(1000);
     }
     else
     {
         if(debug) Serial.print("Bad Position: ");
-        digitalWrite(BAD_POSITION_LED, HIGH);
         if(debug) printPosition(d);
     }
 };
-
-// CALC WIND
-void calcWind() 
-{
-    if (pulse_counter > 0)
-    {
-        float wind_speed_m_s = 2 * PI * CUP_RADIUS * pulse_counter * DAMM_COEFF / PULSE_SAMPLING_RATE; // m per second
-        wind_speed = wind_speed_m_s * 1.949; // knots
-
-        // reset pulse counter
-        pulse_counter = 0;
-    }
-
-    double x = ((analogRead(0) - 150.0) / 375) - 1;
-    double y = ((analogRead(1) - 150.0) / 375) - 1;
-  
-    wind_direction = atan2(y, x) * (180.0 / PI) + 180;
-}
-
-// PULSE INTERRUPT
-void pulse_interrupt()
-{
-    pulse_counter = pulse_counter + 1;
-}
-
-// INT32 TO BUFFER
-void int32ToBuffer(unsigned char *buf, int32_t value) 
-{
-    buf[0] = value & 0xFF;
-    buf[1] = (value >> 8) & 0xFF;
-    buf[2] = (value >> 16) & 0xFF;
-    buf[3] = (value >> 24) & 0xFF;
-}
-
-// INT16 TO BUFFER
-void int16ToBuffer(unsigned char *buf, int16_t value) 
-{
-    buf[0] = value & 0xFF;
-    buf[1] = (value >> 8) & 0xFF;
-}
-
-// FLOAT TO BUFFER
-void floatToBuffer(unsigned char *buf, float value) 
-{
-    memcpy(buf, &value, 4);
-}
 
 // VALIDATE POSITION
 boolean validatePosition(struct trackdata pos) 
@@ -324,40 +91,6 @@ boolean validatePosition(struct trackdata pos)
     }
 
     return false;
-}
-
-void anchorGuard(struct trackdata position)
-{
-    guardAnchor = (digitalRead(GPS_ANCHOR_BUTTON) == HIGH);
-
-    if (guardAnchor)
-    {
-    	// init guarded position
-    	if(guardedPosition.lat == 0.0 && guardedPosition.lon == 0.0) 
-    	{
-    		guardedPosition = position;
-    	}
-
-        float distance = gpsencoder.distance_between(guardedPosition.lat, guardedPosition.lon, position.lat, position.lon);
-        if (distance > ANCHOR_RANGE)
-        {
-            digitalWrite(GPS_SPEAKER, HIGH);
-            Serial.print("Distance from guarded anchor position: ");
-            Serial.print(distance);   
-            Serial.println(". Alarm activated.");
-        }
-        else
-        {
-            digitalWrite(GPS_SPEAKER, LOW);
-            if(debug) Serial.print("Distance from guarded anchor position: ");
-            if(debug) Serial.println(distance);   
-        }
-    }
-    else {
-    	guardedPosition.lat = 0.0;
-    	guardedPosition.lon = 0.0;
-    	digitalWrite(GPS_SPEAKER, LOW);
-    }
 }
 
 // GET POSITION
@@ -390,16 +123,8 @@ struct trackdata getPosition()
     	ihdop = 1;
     }
 
-    /*if(debug) 
-    {
-        struct trackdata position = {100000, 51.0000, 7.4000, 2.5, 120, 0, 0, 25, 16, 14, 2, 2015, wind_speed, wind_direction};
-        return position;
-    }
-    else
-    {*/
-        struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear, wind_speed, wind_direction};
-        return position;
-    //}
+    struct trackdata position = {100000, flat, flon, fspeed, icourse, ihdop, iseconds, iminutes, ihours, iday, imonth, iyear};
+    return position;
 }
 
 // PRINT POSTION
@@ -417,10 +142,6 @@ void printPosition(struct trackdata position)
     Serial.print(position.hdop);
     Serial.print(" DATE=");
     Serial.print(position.hdop);
-    Serial.print(" WINDIDR=");
-    Serial.print(position.winddirection);
-    Serial.print(" WINDSPD=");
-    Serial.print(position.windspeed);
     char sz[32];
     sprintf(sz, "%02d-%02d-%02d %02d:%02d:%02d ", position.year, position.month, position.day, position.hours, position.minutes, position.seconds);
     Serial.print(sz);
