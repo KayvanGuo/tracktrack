@@ -257,7 +257,7 @@ void loop()
 
             // send the position via tcp to server
             Serial.println("Senden!");
-            tcp.connect("tracktrack.io", 8100);
+            tcp.connect("tracker.rubio-segeln.de", 8100);
             tcp.send(pos, 38);
             tcp.disconnect();
 
