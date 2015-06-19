@@ -42,6 +42,8 @@ $(function() {
 					// get new position update
 					socket.on("position", function(position) {
 
+						console.log(position);
+
 						for (var i in that.assets) {
 							if (that.assets[i].options.alt == "boat_" + position.boat) {
 

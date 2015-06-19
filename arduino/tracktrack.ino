@@ -34,12 +34,12 @@ int INTERRUPT_INPUT = 2;
 int pulse_counter = 0;
 
 // CONSTANTS
-int HDOP_THRESHOLD = 150;
-float ANCHOR_RANGE = 20; // meters
+float ANCHOR_RANGE = 15; // meters
 int DISTANCE_FILTER = 1; // meters
-float CUP_RADIUS = 0.06;
-int DAMM_COEFF = 3;
-int PULSE_SAMPLING_RATE = 2; // seconds
+float CUP_RADIUS = 0.068;
+float DAMM_COEFF = 3.0;
+int PULSE_SAMPLING_RATE = 1; // seconds
+int WIND_DIR_BIAS = 145;
 
 // INSTANCES
 TinyGPS gpsencoder;
@@ -49,11 +49,13 @@ struct trackdata lastValidPosition;
 struct trackdata guardedPosition;
 
 float wind_speed = 0.0;
+float wind_dir_buffer[10] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+int wind_dir_buffer_idx = 0;
 int wind_direction = 0;
 
 TCP tcp;
 boolean gsmReady = false;
-boolean debug = true;
+boolean debug = false;
 
 // SETUP
 void setup()
@@ -117,11 +119,11 @@ void setup()
             if(debug) Serial.println("status=ERROR");
         }
     
-        delay(500);
+        delay(300);
 
         // Read IP address.
         gsm.SimpleWriteln("AT+CIFSR");
-        delay(500);
+        delay(300);
     
         gsm.WhileSimpleRead();
     }
@@ -256,7 +258,7 @@ void loop()
             gsm.listen();
 
             // send the position via tcp to server
-            Serial.println("Senden!");
+            if(debug) Serial.println("Senden!");
             tcp.connect("tracker.rubio-segeln.de", 8100);
             tcp.send(pos, 38);
             tcp.disconnect();
@@ -274,8 +276,8 @@ void loop()
         }
 
         // wait 8 sec if speed is below 1 knot,
-        // wait 1 sec if speed is above 1 knot
-        int waiting = 1000;
+        // wait 0.7 sec if speed is above 1 knot
+        int waiting = 700;
         if(d.speed < 1.0) {
             waiting = 8000;
         }
@@ -300,8 +302,25 @@ void calcWind()
 {
     if (pulse_counter > 0)
     {
+        // calculate windspeed from spinning cups counter
         float wind_speed_m_s = 2 * PI * CUP_RADIUS * pulse_counter * DAMM_COEFF / PULSE_SAMPLING_RATE; // m per second
-        wind_speed = wind_speed_m_s * 1.949; // knots
+        float wind_speed_tmp = wind_speed_m_s * 1.949; // knots
+
+        // store windspeed in buffer
+        wind_dir_buffer[wind_dir_buffer_idx] = wind_speed_tmp;
+        wind_dir_buffer_idx = (wind_dir_buffer_idx + 1) % 10;
+
+        // sum up windspeed
+        float wind_speed_sum = 0.0;
+        for(int i = 0; i < 10; i++) 
+        {
+            wind_speed_sum += wind_dir_buffer[i];
+        }
+
+        // calculate average wind speed of last 10 positions
+        wind_speed = wind_speed_sum / 10.0;
+
+        Serial.println(wind_speed);
 
         // reset pulse counter
         pulse_counter = 0;
@@ -310,7 +329,7 @@ void calcWind()
     double x = ((analogRead(0) - 150.0) / 375) - 1;
     double y = ((analogRead(1) - 150.0) / 375) - 1;
   
-    wind_direction = atan2(y, x) * (180.0 / PI) + 180;
+    wind_direction = 360 - (int)(atan2(y, x) * (180.0 / PI) + 180 + WIND_DIR_BIAS) % 360;
 }
 
 // PULSE INTERRUPT
@@ -338,6 +357,7 @@ void int16ToBuffer(unsigned char *buf, int16_t value)
 // FLOAT TO BUFFER
 void floatToBuffer(unsigned char *buf, float value) 
 {
+
     memcpy(buf, &value, 4);
 }
 
