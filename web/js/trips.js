@@ -13,14 +13,16 @@ $(function() {
 			this.render();
 
 			var that = this;
-		    var socket = io.connect("/");
-			socket.emit("join", { owner: this.params.owner });
+			var socket = io.connect("/");
+			socket.emit("join", {
+				owner: this.params.owner
+			});
 
 			// get new position update
 			socket.on("position", function(position) {
 
-				for(var i in that.assets) {
-					if(that.assets[i].options.alt == "boat_" + position.boat) {
+				for (var i in that.assets) {
+					if (that.assets[i].options.alt == "boat_" + position.boat) {
 
 						var l = L.latLng(position.latitude, position.longitude);
 
@@ -29,7 +31,7 @@ $(function() {
 						that.assets[i].angle = position.course;
 
 						// if there is a boatpath available, add to this
-						if(that.boatpath && position.trip == that.currentTrip) {
+						if (that.boatpath && position.trip == that.currentTrip) {
 							that.boatpath.addLatLng(l);
 						}
 					}
@@ -47,13 +49,12 @@ $(function() {
 			$(".leaflet-control-attribution").hide();
 
 			// add an OpenStreetMap tile layer
-			if(navigator.userAgent.toLowerCase().indexOf('firefox') == -1 && mapboxgl.util.supported()) {
+			if (false && navigator.userAgent.toLowerCase().indexOf('firefox') == -1 && mapboxgl.util.supported()) {
 				var gl = L.mapboxGL({
-				    accessToken: "pk.eyJ1IjoidG9tYXN6YnJ1ZSIsImEiOiJ5dXV3N3A0In0.1RNvzTlGXJVR_SCoKGQ3nA",
-				    style: "https://www.mapbox.com/mapbox-gl-styles/styles/outdoors-v6.json"
+					accessToken: "pk.eyJ1IjoidG9tYXN6YnJ1ZSIsImEiOiJ5dXV3N3A0In0.1RNvzTlGXJVR_SCoKGQ3nA",
+					style: "https://www.mapbox.com/mapbox-gl-styles/styles/outdoors-v6.json"
 				}).addTo(this.map);
-			}
-			else {
+			} else {
 				L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
 			}
 
@@ -68,21 +69,23 @@ $(function() {
 			$.getJSON("/api/assets/" + this.params.owner, function(data) {
 
 				console.log(data);
-				
+
 				var bounds = [];
-				for(var i in data) {
+				for (var i in data) {
 
 					var marker;
-					switch(data[i].type) {
+					switch (data[i].type) {
 						case "marina":
 
 							marker = L.marker(data[i].coord, {
 								icon: that.icons[data[i].type],
 								alt: data[i].type + "_" + data[i].id
 							})
-							.bindLabel(data[i].name, { noHide: true })
-							.addTo(that.map);
-						
+								.bindLabel(data[i].name, {
+									noHide: true
+								})
+								.addTo(that.map);
+
 							break;
 
 
@@ -93,26 +96,26 @@ $(function() {
 								color: "#f1c40f"
 							});
 
-							marker.bindLabel(data[i].name, { noHide: true })
+							marker.bindLabel(data[i].name, {
+								noHide: true
+							})
 							marker.addTo(that.map);
 
 							window.boat = marker;
 
 							// set course of boat icon
-							if("course" in data[i]) {
-								if("wind" in data[i]) {
-									if(data[i]["wind"]["speed"] != null && data[i]["wind"]["direction"] != null) {
+							if ("course" in data[i]) {
+								if ("wind" in data[i]) {
+									if (data[i]["wind"]["speed"] != null && data[i]["wind"]["direction"] != null) {
 										marker.setHeadingWind(data[i].course, data[i].wind.speed, data[i].wind.direction);
-									}
-									else {
+									} else {
 										marker.setHeading(data[i].course);
 									}
-								}
-								else {
+								} else {
 									marker.setHeading(data[i].course);
 								}
 							}
-						
+
 							break;
 
 						case "mooring":
@@ -121,7 +124,7 @@ $(function() {
 
 							break;
 					}
-					
+
 
 					bounds.push(data[i].coord);
 					that.assets.push(marker);
@@ -142,13 +145,13 @@ $(function() {
 		tripBoat: null,
 
 		events: {
-			"click .loadTrip"			: "load",
-			"click .showTrip"			: "show",
-			"click .deleteTrip"			: "delete",
-			"click .embedTrip"			: "embed",
-			"click .analyseTrip"		: "analysis",
+			"click .loadTrip": "load",
+			"click .showTrip": "show",
+			"click .deleteTrip": "delete",
+			"click .embedTrip": "embed",
+			"click .analyseTrip": "analysis",
 			"change .embedPreviewChange": "updatePreview",
-			"focus #embedCode"			: "codeSelect",
+			"focus #embedCode": "codeSelect",
 			"input #positionSliderRange": "moveBoatTo"
 		},
 
@@ -169,9 +172,9 @@ $(function() {
 				boats: this.boats
 			});
 
-            this.$el.html(t);
+			this.$el.html(t);
 
-            $(".loadTrip").first().trigger("click");
+			$(".loadTrip").first().trigger("click");
 		},
 
 		// LOAD
@@ -181,14 +184,14 @@ $(function() {
 
 			// load the trips for this boat
 			$.getJSON("/api" + $(e.target).attr("href").replace("#", ""), function(data) {
-				
+
 				var t = _.template($("#tripContentTpl").html(), {
 					trips: data
 				});
 
-	           	that.$el.find("#tripContent").html(t);
+				that.$el.find("#tripContent").html(t);
 
-            	$(".actions > a").tooltip();
+				$(".actions > a").tooltip();
 			});
 		},
 
@@ -199,25 +202,26 @@ $(function() {
 
 			window.mapView.removeBoatPath();
 
-			if(window.mapView.currentTrip == $e.data("id")) {
+			if (window.mapView.currentTrip == $e.data("id")) {
 				window.mapView.removeBoatPath();
 				$(e.target).text("anzeigen");
 				$("#positionSlider").fadeOut();
-			}
-			else {
+			} else {
 				$.getJSON("/api/positions/" + $e.data("id"), function(p) {
 
 					//console.log(JSON.stringify(p));
 
 					that.tripData = p.positions;
 					window.mapView.addBoatPath($e.data("id"), p);
-					$("html, body").animate({ scrollTop: 0}, "fast");
+					$("html, body").animate({
+						scrollTop: 0
+					}, "fast");
 					$(".showTrip").text("anzeigen");
-					$(e.target).text("ausblenden");	
+					$(e.target).text("ausblenden");
 
 					$("#positionSlider").fadeIn();
-					$("#positionSliderRange").attr("max", p.positions.length);	
-					$("#positionSliderRange").val(p.positions.length);	
+					$("#positionSliderRange").attr("max", p.positions.length);
+					$("#positionSliderRange").val(p.positions.length);
 				});
 			}
 		},
@@ -229,10 +233,9 @@ $(function() {
 			window.boat.setLatLng(l);
 
 			//window.boat.setHeading(pos.course);
-			if(pos["windspeed"] != null && pos["winddirection"] != null) {
+			if (pos["windspeed"] != null && pos["winddirection"] != null) {
 				window.boat.setHeadingWind(pos.course, pos.windspeed, pos.winddirection);
-			}
-			else {
+			} else {
 				window.boat.setHeading(pos.course);
 			}
 
@@ -243,11 +246,11 @@ $(function() {
 		delete: function(e) {
 			var $e = $(e.target).parents(".actions");
 
-			if(confirm("Wirklich löschen?") == true) {
+			if (confirm("Wirklich löschen?") == true) {
 				$.getJSON("/api/trips/delete/" + $e.data("id"), function(result) {
-					
+
 					// deletion went well, remove row
-					if(result.success) {
+					if (result.success) {
 						$e.parents("tr").remove();
 					}
 				});
@@ -260,7 +263,7 @@ $(function() {
 
 			var key = $e.data("key");
 			var id = $e.data("id");
-			
+
 			// launch modal view
 			$("#modalEmbed").modal("show");
 			$("#embedKey").val(key);
@@ -277,99 +280,102 @@ $(function() {
 
 			var key = $e.data("key");
 			var id = $e.data("id");
-			
+
 			// launch modal view
 			$("#modalAnalysis").modal("show");
 
 			$.getJSON("/api/positions/" + id, function(p) {
 
-				var speeds = [], courses = [], times = [];
-				var lastSpeed = 0, lastCourse = 0;
-				for(var i in p.positions) {
+				var speeds = [],
+					courses = [],
+					times = [];
+				var lastSpeed = 0,
+					lastCourse = 0;
+				for (var i in p.positions) {
 
-					speeds.push([moment(p.positions[i].timestamp).toDate(), p.positions[i].speed]);	
+					speeds.push([moment(p.positions[i].timestamp).toDate(), p.positions[i].speed]);
 					courses.push([moment(p.positions[i].timestamp).toDate(), p.positions[i].course]);
 				}
 
 				$("#speedChart").highcharts({
-			        chart: {
-			            type: "spline"
-			        },
-			        title: {
-			            text: "Geschwindigkeit"
-			        },
-			        subtitle: {
-			            text: "über Grund"
-			        },
-			        xAxis: {
-			            type: "datetime",
-			            dateTimeLabelFormats: { // don't display the dummy year
-			                month: '%e. %b',
-			                year: '%b'
-			            },
-			            title: {
-			                text: "Date"
-			            }
-			        },
-			        yAxis: {
-			            title: {
-			                text: "Geschwindkeit in Knoten"
-			            },
-			            min: 0
-			        },
-			        tooltip: {
-			            headerFormat: '<b>{series.name}</b><br>',
-			            pointFormat: '{point.y:.2f}'
-			        },
+					chart: {
+						type: "spline"
+					},
+					title: {
+						text: "Geschwindigkeit"
+					},
+					subtitle: {
+						text: "über Grund"
+					},
+					xAxis: {
+						type: "datetime",
+						dateTimeLabelFormats: { // don't display the dummy year
+							month: '%e. %b',
+							year: '%b'
+						},
+						title: {
+							text: "Date"
+						}
+					},
+					yAxis: {
+						title: {
+							text: "Geschwindkeit in Knoten"
+						},
+						min: 0
+					},
+					tooltip: {
+						headerFormat: '<b>{series.name}</b><br>',
+						pointFormat: '{point.y:.2f}'
+					},
 
-			        series: [{
-			            name: "Geschwindigkeiten",
-			            // Define the data points. All series have a dummy year
-			            // of 1970/71 in order to be compared on the same x axis. Note
-			            // that in JavaScript, months start at 0 for January, 1 for February etc.
-			            data: speeds
-			        }]
-			    });
+					series: [{
+						name: "Geschwindigkeiten",
+						// Define the data points. All series have a dummy year
+						// of 1970/71 in order to be compared on the same x axis. Note
+						// that in JavaScript, months start at 0 for January, 1 for February etc.
+						data: speeds
+					}]
+				});
 
 				$("#courseChart").highcharts({
-			        chart: {
-			            type: "spline"
-			        },
-			        title: {
-			            text: "Kurs"
-			        },
-			        subtitle: {
-			            text: ""
-			        },
-			        xAxis: {
-			            type: "datetime",
-			            dateTimeLabelFormats: { // don't display the dummy year
-			                month: '%e. %b',
-			                year: '%b'
-			            },
-			            title: {
-			                text: "Date"
-			            }
-			        },
-			        yAxis: {
-			            title: {
-			                text: "Kurse in Grad"
-			            },
-			            min: 0
-			        },
-			        tooltip: {
-			            headerFormat: '<b>{series.name}</b><br>',
-			            pointFormat: '{point.y:.0f}'
-			        },
+					chart: {
+						type: "spline"
+					},
+					title: {
+						text: "Kurs"
+					},
+					subtitle: {
+						text: ""
+					},
+					xAxis: {
+						type: "datetime",
+						dateTimeLabelFormats: { // don't display the dummy year
+							month: '%e. %b',
+							year: '%b'
+						},
+						title: {
+							text: "Date"
+						}
+					},
+					yAxis: {
+						title: {
+							text: "Kurse in Grad"
+						},
+						min: 0
+					},
+					tooltip: {
+						headerFormat: '<b>{series.name}</b><br>',
+						pointFormat: '{point.y:.0f}'
+					},
 
-			        series: [{
-			            name: "Kurse",
-			            // Define the data points. All series have a dummy year
-			            // of 1970/71 in order to be compared on the same x axis. Note
-			            // that in JavaScript, months start at 0 for January, 1 for February etc.
-			            data: courses
-			        }]
-			    });
+					series: [{
+						name: "Kurse",
+						// Define the data points. All series have a dummy year
+						// of 1970/71 in order to be compared on the same x axis. Note
+						// that in JavaScript, months start at 0 for January, 1 for February etc.
+						data: courses
+					}]
+				});
 
 
 			});
@@ -380,11 +386,11 @@ $(function() {
 			var key = $("#embedKey").val();
 			var url = "https://tracktrack.io/embed/" + key + "/?f=";
 
-			url += $(".followVals input[type='radio']:checked").val();	// follow
+			url += $(".followVals input[type='radio']:checked").val(); // follow
 			url += "&a=";
-			url += ($("#assets").prop("checked")) ? "1" : "0";	// assets
+			url += ($("#assets").prop("checked")) ? "1" : "0"; // assets
 			url += "&l=";
-			url += ($("#labels").prop("checked")) ? "1" : "0";	// labels
+			url += ($("#labels").prop("checked")) ? "1" : "0"; // labels
 
 			var iframe = "<iframe src=\"" + url + "\" width=\"" + $("#embedWidth").val() + "\" height=\"" + $("#embedHeight").val() + "\" frameborder=\"0\"></iframe>";
 
@@ -395,63 +401,62 @@ $(function() {
 		// CODE SELECT
 		codeSelect: function(event) {
 			event.preventDefault();
-  			setTimeout(function() { 
-  				$(event.target).select(); 
-  			}, 1); 
+			setTimeout(function() {
+				$(event.target).select();
+			}, 1);
 		}
 	});
 
 	// ROUTER
-    var AppRouter = Backbone.Router.extend({
-        routes: {
-            "*actions": "index"
-        },
+	var AppRouter = Backbone.Router.extend({
+		routes: {
+			"*actions": "index"
+		},
 
-        // ROUTES
-        index: function() {
+		// ROUTES
+		index: function() {
 
-        	var owner = 2;
+			var owner = 2;
 
-        	window.mapView = new IndexMapView({
-        		"owner": owner
-        	});
+			window.mapView = new IndexMapView({
+				"owner": owner
+			});
 
-        	window.tripView = new TripView({
-        		"owner": owner
-        	});
-        }
-    });
+			window.tripView = new TripView({
+				"owner": owner
+			});
+		}
+	});
 
-    window.validate = function(input) {
-        if(input) {
-            if(input.length > 1) {
-                if(input.indexOf("undefined") == -1) {
-                    return input;
-                }
-            }
-        }
+	window.validate = function(input) {
+		if (input) {
+			if (input.length > 1) {
+				if (input.indexOf("undefined") == -1) {
+					return input;
+				}
+			}
+		}
 
-        return null;
-    };
+		return null;
+	};
 
 	// setup the http-basic auth
-    $.ajaxSetup({
-        cache: false,
-        beforeSend: function(xhr) { 
-            var e = localStorage.getItem("e");
+	$.ajaxSetup({
+		cache: false,
+		beforeSend: function(xhr) {
+			var e = localStorage.getItem("e");
 			var p = localStorage.getItem("p");
 
-            // if we have a username / password stored, use it for http-basic-auth
-            if (window.validate(e) && window.validate(p)) {
-                xhr.setRequestHeader("Authorization", "Basic " + btoa(e + ":" + p)); 
-            }
-            else {
-                location.href = "/";
-            }
-        }
-    });
+			// if we have a username / password stored, use it for http-basic-auth
+			if (window.validate(e) && window.validate(p)) {
+				xhr.setRequestHeader("Authorization", "Basic " + btoa(e + ":" + p));
+			} else {
+				location.href = "/";
+			}
+		}
+	});
 
-    // start backbone app
-    workspace = new AppRouter;
-    Backbone.history.start();
+	// start backbone app
+	workspace = new AppRouter;
+	Backbone.history.start();
 });
