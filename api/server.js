@@ -204,7 +204,7 @@ app.get("/api/trip/:key", function(req, res) {
 		if (err) throw err;
 
 		// fetch all boats
-		c.query("SELECT t.*, b.name, b.owner FROM trips AS t JOIN boats AS b ON t.boat = b.id WHERE t.key = " + pool.escape(req.params.key), function(err, rows) {
+		c.query("SELECT t.*, b.name, b.owner, b.photo FROM trips AS t JOIN boats AS b ON t.boat = b.id WHERE t.key = " + pool.escape(req.params.key), function(err, rows) {
 
 			if (err) throw err;
 			c.release();
@@ -469,6 +469,9 @@ app.get("/api/tileproxy", function(req, res) {
 */
 
 io.on("connection", function(socket) {
+
+	global.socket = socket;
+
 	socket.on("join", function(data) {
 
 		if (data.owner) {
@@ -804,8 +807,9 @@ net.createServer(function(c) {
 								});
 
 								// populate to websocket
-								io.sockets.in("owner_" + rows[0].owner).emit("position", position);
-								if (trip) io.sockets.in("trip_" + trip).emit("position", position);
+								//io.sockets.in("owner_" + rows[0].owner).emit("position", position);
+								//if (trip) io.sockets.in("trip_" + trip).emit("position", position);
+								io.sockets.emit("position", position);
 
 								callback();
 

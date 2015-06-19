@@ -279,7 +279,7 @@ void loop()
         // wait 0.7 sec if speed is above 1 knot
         int waiting = 700;
         if(d.speed < 1.0) {
-            waiting = 8000;
+            //waiting = 8000;
         }
 
         // if anchor guard is active speed up the waiting

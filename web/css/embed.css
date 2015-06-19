@@ -1,3 +1,8 @@
+@font-face {
+   font-family: Digital;
+   src: url("digital.ttf") format("truetype");
+}
+
 html, body {
 	height: 100%;
 	width: 100%;
@@ -5,7 +10,7 @@ html, body {
 
 #map {
 	height:100%;
-	width:100%;
+	width:calc(100% - 300px);
 }
 
 .loader {
@@ -18,4 +23,66 @@ html, body {
 	color:lightgrey;
 	margin-left:-40px;
 	margin-top:-45px;
+}
+
+#status {
+	position:absolute;
+	right:0px;
+	width:300px;
+	background-color: rgba(255,255,255,0.8);
+	top:0px;
+	height:100%;
+	z-index: 99999;
+	background-color:#eee;
+
+	-webkit-box-shadow: inset 15px 0px 13px -10px rgba(0,0,0,0.2);
+	-moz-box-shadow: inset 15px 0px 13px -10px rgba(0,0,0,0.2);
+	box-shadow: inset 15px 0px 13px -10px rgba(0,0,0,0.2);
+}
+
+@media (max-width: 768px)  {
+	#status {
+		display:none;
+	}
+
+	#map {
+		width:100%;
+	}
+}
+
+#status h1 {
+	padding-left:20px;
+	padding-right:20px;
+	text-align: center;
+}
+
+.pads {
+	margin-top:20px;
+}
+
+.pad {
+	float:left;
+	padding:10px;
+	background-color:#ddd;
+	border-radius:5px;
+	width:120px;
+	text-align: center;
+	margin-left:20px;
+	margin-bottom:20px;
+}
+
+.pad-xl {
+	width:260px;
+}
+
+.pad span {
+	font-family:Digital;
+	font-size:3em;
+	display:block;
+}
+
+.ct-chart svg {
+	margin-left:-25px!important;
+	margin-top:-15px!important;
+	margin-bottom: -25px!important;
 }

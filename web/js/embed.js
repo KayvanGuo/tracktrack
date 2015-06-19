@@ -34,6 +34,10 @@ $(function() {
 					that.$el.empty();
 					that.render();
 
+					// set sidebar image
+					$("#status img").attr("src", trip.photo);
+
+					// start socket
 					var socket = io.connect("/");
 					socket.emit("join", {
 						trip: that.trip.id
@@ -43,6 +47,12 @@ $(function() {
 					socket.on("position", function(position) {
 
 						console.log(position);
+
+						var pad = function(n, width, z) {
+							z = z || '0';
+							n = n + '';
+							return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+						};
 
 						for (var i in that.assets) {
 							if (that.assets[i].options.alt == "boat_" + position.boat) {
@@ -69,6 +79,12 @@ $(function() {
 								}
 							}
 						}
+
+						// update status
+						$("#status #speed span").html(position.speed.toFixed(1));
+						$("#status #course span").html(Math.abs(pad(position.course.toFixed(0), 3)));
+						$("#status #wind-speed span").html(position.windspeed.toFixed(1));
+						$("#status #wind-dir span").html(Math.abs(pad(position.winddirection.toFixed(0), 3)));
 					});
 
 					// get new label update
@@ -89,15 +105,8 @@ $(function() {
 			$(".leaflet-control-attribution").html("<a href='//tracktrack.io' target='_blank'>TrackTrack.io</a>");
 
 			// add an OpenStreetMap tile layer
-			if (false && navigator.userAgent.toLowerCase().indexOf('firefox') == -1 && mapboxgl.util.supported()) {
+			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
 
-				var gl = L.mapboxGL({
-					accessToken: "pk.eyJ1IjoidG9tYXN6YnJ1ZSIsImEiOiJ5dXV3N3A0In0.1RNvzTlGXJVR_SCoKGQ3nA",
-					style: "/libs/outdoors-v7.json"
-				}).addTo(this.map);
-			} else {
-				L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
-			}
 
 			// add seamark layer
 			L.tileLayer("https://tracktrack.io/seamark/{z}/{x}/{y}.png", {
