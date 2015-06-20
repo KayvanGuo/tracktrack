@@ -13,6 +13,12 @@ $(function() {
 		// INITIALIZE
 		initialize: function() {
 
+			window.pad = function(n, width, z) {
+				z = z || '0';
+				n = n + '';
+				return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+			};
+
 			var path = window.location.pathname.split("/");
 			var key = path[path.length - 2];
 			var search = window.location.search.replace("?", "").split("&");
@@ -48,12 +54,6 @@ $(function() {
 
 						console.log(position);
 
-						var pad = function(n, width, z) {
-							z = z || '0';
-							n = n + '';
-							return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
-						};
-
 						for (var i in that.assets) {
 							if (that.assets[i].options.alt == "boat_" + position.boat) {
 
@@ -82,9 +82,9 @@ $(function() {
 
 						// update status
 						$("#status #speed span").html(position.speed.toFixed(1));
-						$("#status #course span").html(Math.abs(pad(position.course.toFixed(0), 3)));
+						$("#status #course span").html(window.pad(Math.abs(position.course.toFixed(0)), 3));
 						$("#status #wind-speed span").html(position.windspeed.toFixed(1));
-						$("#status #wind-dir span").html(Math.abs(pad(position.winddirection.toFixed(0), 3)));
+						$("#status #wind-dir span").html(window.pad(Math.abs(position.winddirection.toFixed(0)), 3));
 					});
 
 					// get new label update
@@ -102,8 +102,6 @@ $(function() {
 				measureControl: true
 			});
 
-			$(".leaflet-control-attribution").html("<a href='//tracktrack.io' target='_blank'>TrackTrack.io</a>");
-
 			// add an OpenStreetMap tile layer
 			//L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
 			L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
@@ -114,7 +112,7 @@ $(function() {
 			}).addTo(this.map);
 
 			// add seamark layer
-			L.tileLayer("https://tracktrack.io/seamark/{z}/{x}/{y}.png", {
+			L.tileLayer("http://tracker.rubio-segeln.de/seamark/{z}/{x}/{y}.png", {
 				maxZoom: 17,
 				minZoom: 10
 			}).addTo(this.map);
