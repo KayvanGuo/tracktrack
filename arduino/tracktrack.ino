@@ -320,7 +320,7 @@ void calcWind()
         // calculate average wind speed of last 10 positions
         wind_speed = wind_speed_sum / 10.0;
 
-        Serial.println(wind_speed);
+        if(debug) Serial.println(wind_speed);
 
         // reset pulse counter
         pulse_counter = 0;

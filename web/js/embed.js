@@ -105,8 +105,13 @@ $(function() {
 			$(".leaflet-control-attribution").html("<a href='//tracktrack.io' target='_blank'>TrackTrack.io</a>");
 
 			// add an OpenStreetMap tile layer
-			L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
-
+			//L.tileLayer("//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+			L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+				attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+				maxZoom: 18,
+				id: 'tomaszbrue.mgh2cfc0',
+				accessToken: "pk.eyJ1IjoidG9tYXN6YnJ1ZSIsImEiOiJXWmNlSnJFIn0.xvLReqNnXy_wndeZ8JGOEA"
+			}).addTo(this.map);
 
 			// add seamark layer
 			L.tileLayer("https://tracktrack.io/seamark/{z}/{x}/{y}.png", {
