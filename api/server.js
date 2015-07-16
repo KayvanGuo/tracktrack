@@ -504,7 +504,7 @@ net.createServer(function(c) {
 
 	c.on("error", function(err) {
 		c.end();
-		throw err;
+		console.log(err);
 	});
 
 	// DATA
@@ -544,42 +544,45 @@ net.createServer(function(c) {
 				"data": buf
 			});
 
-			// check for the first occurance of "AAA"
-			for (var i = 0; i < buf.length; i++) {
+			if (buf) {
 
-				// not enough data anyway, break out of the loop
-				if (i + 4 >= buf.length) break;
+				// check for the first occurance of "AAA"
+				for (var i = 0; i < buf.length; i++) {
 
-				// is this a valid "MCGP" message?
-				if (buf[i] == 77 && buf[i + 1] == 67 && buf[i + 2] == 71 && buf[i + 3] == 80) {
+					// not enough data anyway, break out of the loop
+					if (i + 4 >= buf.length) break;
 
-					// slice a message piece out?
-					var working = buf.slice(i, i + 38);
+					// is this a valid "MCGP" message?
+					if (buf[i] == 77 && buf[i + 1] == 67 && buf[i + 2] == 71 && buf[i + 3] == 80) {
 
-					// interpret and store working buffer
-					var dateString = working.readInt16LE(29) + "-" + zero(working.readInt8(28)) + "-" + zero(working.readInt8(27)) + " " + zero(working.readInt8(26)) + ":" + zero(working.readInt8(25)) + ":" + zero(working.readInt8(24));
+						// slice a message piece out?
+						var working = buf.slice(i, i + 38);
 
-					var position = {
-						"hwid": working.readInt32LE(4),
-						"latitude": working.readFloatLE(8),
-						"longitude": working.readFloatLE(12),
-						"speed": working.readFloatLE(16),
-						"course": working.readInt16LE(20),
-						"hdop": working.readInt16LE(22),
-						"timestamp": dateString,
-						"anchored": (working.readInt8(31) == 1),
-						"windspeed": working.readFloatLE(32),
-						"winddirection": working.readInt16LE(36)
-					};
+						// interpret and store working buffer
+						var dateString = working.readInt16LE(29) + "-" + zero(working.readInt8(28)) + "-" + zero(working.readInt8(27)) + " " + zero(working.readInt8(26)) + ":" + zero(working.readInt8(25)) + ":" + zero(working.readInt8(24));
 
-					// add new array to positions dict
-					if (!(position.hwid in boatPositions)) {
-						boatPositions[position.hwid] = [];
+						var position = {
+							"hwid": working.readInt32LE(4),
+							"latitude": working.readFloatLE(8),
+							"longitude": working.readFloatLE(12),
+							"speed": working.readFloatLE(16),
+							"course": working.readInt16LE(20),
+							"hdop": working.readInt16LE(22),
+							"timestamp": dateString,
+							"anchored": (working.readInt8(31) == 1),
+							"windspeed": working.readFloatLE(32),
+							"winddirection": working.readInt16LE(36)
+						};
+
+						// add new array to positions dict
+						if (!(position.hwid in boatPositions)) {
+							boatPositions[position.hwid] = [];
+						}
+
+						boatPositions[position.hwid].push(position);
+
+						i += 31;
 					}
-
-					boatPositions[position.hwid].push(position);
-
-					i += 31;
 				}
 			}
 

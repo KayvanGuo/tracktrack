@@ -57,7 +57,7 @@ $(function() {
 			}).addTo(this.map);
 
 			// add seamark layer
-			L.tileLayer("https://tracktrack.io/seamark/{z}/{x}/{y}.png", {
+			L.tileLayer("http://tracker.rubio-segeln.de/seamark/{z}/{x}/{y}.png", {
 				maxZoom: 17,
 				minZoom: 10
 			}).addTo(this.map);
@@ -382,7 +382,7 @@ $(function() {
 		// UPDATE PREVIEW
 		updatePreview: function() {
 			var key = $("#embedKey").val();
-			var url = "https://tracktrack.io/embed/" + key + "/?f=";
+			var url = "http://tracker.rubio-segeln.de/embed/" + key + "/?f=";
 
 			url += $(".followVals input[type='radio']:checked").val(); // follow
 			url += "&a=";

@@ -40,7 +40,7 @@ html, body {
 	box-shadow: inset 15px 0px 13px -10px rgba(0,0,0,0.2);
 }
 
-@media (max-width: 768px)  {
+/*@media (max-width: 768px)  {
 	#status {
 		display:none;
 	}
@@ -48,7 +48,7 @@ html, body {
 	#map {
 		width:100%;
 	}
-}
+}*/
 
 #status h1 {
 	padding-left:20px;
