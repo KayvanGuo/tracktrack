@@ -144,7 +144,7 @@ app.get("/embed/latest/:boat", function(req, res) {
 				return res.redirect("/");
 			}
 
-			return res.redirect("/embed/" + boats[0]["key"] + "/?f=" + req.query.f + "&a=" + req.query.a + "&l=" + req.query.l);
+			return res.redirect("/embed/" + boats[0]["key"] + "/?f=" + req.query.f || 1 + "&a=" + req.query.a || 0 + "&l=" + req.query.l || 0);
 		});
 	})
 });
